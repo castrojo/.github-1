@@ -1,32 +1,22 @@
 name: Bug report
-description: Report a bug in a tunaOS image, installer, or tool
+description: Report a bug or unexpected behavior in this repository
 title: "[bug] <short description>"
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report! Please check
-        [existing issues](https://github.com/tuna-os/tunaos/issues) first.
-  - type: input
-    id: variant
-    attributes:
-      label: Variant / Flavor
-      description: Which tunaOS variant and desktop flavor (e.g. yellowfin:gnome, albacore:kde, bonito:niri)
-      placeholder: "e.g. yellowfin:gnome"
-    validations:
-      required: true
-  - type: input
-    id: image
-    attributes:
-      label: Image / ISO
-      description: Exact image tag or ISO name you are running (from the download page)
-      placeholder: "e.g. yellowfin-10-x86_64"
+        Thanks for taking the time to report an issue! Please check existing
+        issues in this repository before filing.
+
+        If your issue is specific to the TunaOS operating system image (desktop
+        variants, system ISOs, or OS image builds), please file it in
+        [tuna-os/tunaos](https://github.com/tuna-os/tunaos/issues).
   - type: textarea
     id: what-happened
     attributes:
       label: What happened?
-      description: Describe the bug. Include what you expected to happen.
+      description: Describe the bug. Include what you expected to happen instead.
       placeholder: "Tell us what went wrong..."
     validations:
       required: true
@@ -36,21 +26,22 @@ body:
       label: How to reproduce
       description: Steps to reproduce the behavior
       placeholder: |
-        1. Boot the ISO...
-        2. Install...
+        1. Run...
+        2. Execute...
         3. See error...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, version/commit/tag, hardware, or runtime dependencies relevant to this repository
+      placeholder: "e.g. OS version, package/release version, architecture, browser/runtime..."
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
       label: Relevant logs / error output
-      description: Paste any terminal output, journalctl excerpts, or screenshots
+      description: Paste any terminal output, logs, or screenshots
       render: shell
-  - type: textarea
-    id: system
-    attributes:
-      label: System context
-      description: Hardware (esp. GPU for -nvidia flavors), install type (live ISO / bootc / dual-boot)
-    validations:
-      required: true
