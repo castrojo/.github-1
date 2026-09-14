@@ -39,7 +39,13 @@ jobs:
 
           DRIFTED=""
           for repo in $REPOS; do
-            SHA=$(gh api "repos/tuna-os/${repo}/contents/.github/scripts/update-index.py" --jq '.sha' 2>/dev/null || echo "MISSING")
+            # On 404 gh api exits non-zero but still prints the error JSON to
+            # stdout, so a naive `|| echo MISSING` leaves SHA polluted with the
+            # error body and the missing-file case falls through to the
+            # "drifted" branch (false positive, e.g. gtk-office-suite 08-17).
+            if ! SHA=$(gh api "repos/tuna-os/${repo}/contents/.github/scripts/update-index.py" --jq '.sha' 2>/dev/null); then
+              SHA="MISSING"
+            fi
             if [[ "$SHA" == "MISSING" ]]; then
               echo "::warning::${repo}: .github/scripts/update-index.py not found (already migrated off the copy, or moved)"
             elif [[ "$SHA" != "$CANONICAL_SHA" ]]; then
