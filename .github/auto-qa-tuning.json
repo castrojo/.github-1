@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": 1,
+  "description": "Auto-QA self-tuning configuration for tuna-os/.github. Consumed by the ACMM L4 auto-QA self-tuning harness (criterion acmm:auto-qa-tuning, tracked in issue #56); not yet read by any workflow in this repository — it is consumed when that self-tuning job lands. Thresholds are the L4 self-tuning targets: 0.95 pass-rate, 0.8 min quality score, 0.6 escalation.",
+  "tuning": {
+    "enabled": true,
+    "strategy": "outcome-based",
+    "evaluation": {
+      "metric": "pass-rate",
+      "target": 0.95,
+      "window_size": 20
+    },
+    "thresholds": {
+      "min_quality_score": 0.8,
+      "escalation_threshold": 0.6
+    }
+  }
+}
