@@ -92,6 +92,17 @@ def main() -> int:
     if policy.check(preset):
         failures.append(f"  - default.json (the shared preset) violates the policy: {policy.check(preset)}")
 
+    # project-starter/scripts/check-renovate-automerge-policy.py must stay
+    # synchronized byte-for-byte with the canonical root copy (tuna-os/.github#34).
+    root_checker = _src.read_bytes()
+    starter_checker_path = pathlib.Path(__file__).parents[1] / "project-starter" / "scripts" / "check-renovate-automerge-policy.py"
+    if not starter_checker_path.exists():
+        failures.append(f"  - {starter_checker_path} is missing")
+    elif starter_checker_path.read_bytes() != root_checker:
+        failures.append(
+            f"  - {starter_checker_path} has drifted from canonical {_src} (must match byte-for-byte)"
+        )
+
     if failures:
         print("FAIL: renovate automerge policy checker regressed:", file=sys.stderr)
         print("\n".join(failures), file=sys.stderr)
