@@ -22,6 +22,7 @@ A curated, copyable baseline for TunaOS projects. It distils the practices that 
 | `scripts/check-renovate-automerge-policy.py` | CI gate: fails the build if `renovate.json` would automerge a major/minor update, even via rule layering (tuna-os/.github#12) | tuna-os/.github#1636 |
 | `flatpak-remote.yml` | Build an OCI Flatpak and update a hosted remote index | tuna-os/docs |
 | `docs-artifacts.yml` | Turn validated screenshots or walkthroughs into versioned docs | tunaOS → docs |
+| `release.yml` | Semantic release publishing on the protected default branch | bootc-migrate, bluefin-cli |
 
 ## Principles
 
