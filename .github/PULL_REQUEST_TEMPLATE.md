@@ -1,6 +1,6 @@
 ---
 name: Pull request
-about: Contribute a change to tunaOS
+about: Contribute a change to TunaOS
 ---
 
 ## Summary

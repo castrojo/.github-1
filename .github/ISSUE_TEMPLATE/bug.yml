@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a bug in a tunaOS image, installer, or tool
+description: Report a bug in a TunaOS image, installer, or tool
 title: "[bug] <short description>"
 labels: ["bug"]
 body:
@@ -7,12 +7,12 @@ body:
     attributes:
       value: |
         Thanks for taking the time to fill out this bug report! Please check
-        [existing issues](https://github.com/tuna-os/tunaos/issues) first.
+        [existing issues](https://github.com/tuna-os/tunaOS/issues) first.
   - type: input
     id: variant
     attributes:
       label: Variant / Flavor
-      description: Which tunaOS variant and desktop flavor (e.g. yellowfin:gnome, albacore:kde, bonito:niri)
+      description: Which TunaOS variant and desktop flavor (e.g. yellowfin:gnome, albacore:kde, bonito:niri)
       placeholder: "e.g. yellowfin:gnome"
     validations:
       required: true

@@ -1,6 +1,6 @@
 # Organization Enablement Roadmap
 
-**Last updated**: 2026-09-02 | **Maintainer**: Tuna OS organization maintainers
+**Last updated**: 2026-09-02 | **Maintainer**: TunaOS organization maintainers
 
 ## Mission
 
@@ -20,9 +20,9 @@ here affect the contributor experience across the portfolio.
 
 | Priority | Item | Tracking | Status |
 |---|---|---|---|
-| P0 | Make inherited issue forms repository-neutral and keep image-specific fields local to `tuna-os/tunaos` | #32 | Not started |
-| P1 | Automate default-branch-aware refreshes of `ROADMAP-INDEX.md` | tuna-os/tunaos#1295 | Proposed; manual coverage reached 36/37 |
-| P1 | Complete adoption of the canonical Flatpak index action and retire the interim copy-drift guard | tuna-os/tunaos#1183 | In progress |
+| P0 | Make inherited issue forms repository-neutral and keep image-specific fields local to `tuna-os/tunaOS` | #32 | Not started |
+| P1 | Automate default-branch-aware refreshes of `ROADMAP-INDEX.md` | tuna-os/tunaOS#1295 | Proposed; manual coverage reached 36/37 |
+| P1 | Complete adoption of the canonical Flatpak index action and retire the interim copy-drift guard | tuna-os/tunaOS#1183 | In progress |
 | P1 | Give inherited planning artifacts a named human owner: remove automation bylines from the starter template and sweep the 37 committed files across 19 repositories that inherited them | #54 | Template fixed; repository sweep not started |
 | P2 | Define an owner and review cadence for org-level community-health files | #32 | Proposed |
 
@@ -30,15 +30,15 @@ here affect the contributor experience across the portfolio.
 
 | Goal | Success measure | Tracking |
 |---|---|---|
-| Correct the shared issue-entry funnel | Shared forms collect repository-neutral context; image-specific forms live in `tuna-os/tunaos`; representative app, library, installer, and CI repositories are verified | #32 |
-| Make portfolio planning observable | Maintain the verified 36/37 active-repository baseline; resolve the superseded `kde-build-meta` lifecycle; automation work is separately scoped | tuna-os/tunaos#1295, tuna-os/kde-build-meta#19 |
+| Correct the shared issue-entry funnel | Shared forms collect repository-neutral context; image-specific forms live in `tuna-os/tunaOS`; representative app, library, installer, and CI repositories are verified | #32 |
+| Make portfolio planning observable | Maintain the verified 36/37 active-repository baseline; resolve the superseded `kde-build-meta` lifecycle; automation work is separately scoped | tuna-os/tunaOS#1295, tuna-os/kde-build-meta#19 |
 
 ## 2026 Q4 Goals
 
 | Goal | Success measure | Tracking |
 |---|---|---|
-| Prevent roadmap inventory drift | A scheduled, default-branch-aware check proposes reviewable updates when repository coverage changes | tuna-os/tunaos#1295 |
-| Reduce duplicated release tooling | Callers migrate to the canonical Flatpak index action and the temporary drift guard can be removed | tuna-os/tunaos#1183 |
+| Prevent roadmap inventory drift | A scheduled, default-branch-aware check proposes reviewable updates when repository coverage changes | tuna-os/tunaOS#1295 |
+| Reduce duplicated release tooling | Callers migrate to the canonical Flatpak index action and the temporary drift guard can be removed | tuna-os/tunaOS#1183 |
 | Measure contributor-funnel health | Quarterly review records issue-form overrides, misrouted reports, and first-response outcomes | #32 |
 | Make governance documents attributable to people | No committed file in the portfolio attributes org policy to an automation agent; every roadmap names a human or team owner | #54 |
 

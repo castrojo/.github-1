@@ -1,13 +1,13 @@
 name: Feature request
-description: Suggest an idea or enhancement for tunaOS
+description: Suggest an idea or enhancement for TunaOS
 title: "[enhancement] <short description>"
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting an idea! Check [existing issues](https://github.com/tuna-os/tunaos/issues)
-        and the [roadmap](https://github.com/tuna-os/tunaos/blob/main/ROADMAP.md) first.
+        Thanks for suggesting an idea! Check [existing issues](https://github.com/tuna-os/tunaOS/issues)
+        and the [roadmap](https://github.com/tuna-os/tunaOS/blob/main/ROADMAP.md) first.
   - type: textarea
     id: problem
     attributes:

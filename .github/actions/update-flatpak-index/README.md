@@ -1,6 +1,6 @@
 # update-flatpak-index
 
-Canonical, single-source copy of `update-index.py` (tuna-os/tunaos#1183: the
+Canonical, single-source copy of `update-index.py` (tuna-os/tunaOS#1183: the
 script was byte-copied — identical git blob `127aed10...` — across 8 repos,
 each independently drifting).
 
@@ -26,12 +26,12 @@ index untouched.
 
 ## Migration status
 
-This action was added as the first step of the tunaos#1183 consolidation
+This action was added as the first step of the tuna-os#1183 consolidation
 (recommendation #1: host the script once, consume via composite action).
 It has since been wrapped by
 [`publish-flatpak-index`](../publish-flatpak-index) (adds the
 clone/commit/push-with-retry against `tuna-os/docs` that every caller used
-to hand-roll — see that action's README for tunaos#2104), and consumed
+to hand-roll — see that action's README for tuna-os#2104), and consumed
 indirectly through the reusable
 [`publish-flatpak.yml`](../../workflows/publish-flatpak.yml) workflow
 (recommendation #2). Direct callers of *this* action are what remains
@@ -42,11 +42,11 @@ Confirmed migrated off the local `.github/scripts/update-index.py` copy
 any of them): `Tavern`, `dualcut`, `mandelbrot`, `gtk-office-suite`. Not
 verified either way from this repo (no visibility into their default
 branch from here): `tuna-installer-{cosmic,kde,niri,xfce}`,
-`bootc-installer` — tunaos#1183's original list named them too, and nothing
+`bootc-installer` — tuna-os#1183's original list named them too, and nothing
 in this repo confirms whether they've moved off the script or the
 clone/push block `publish-flatpak-index`'s README describes.
 
-Recommendation #3 from tunaos#1183 (an interim drift-guard that fails when a
+Recommendation #3 from tuna-os#1183 (an interim drift-guard that fails when a
 repo's committed copy diverges from canonical) is implemented in
 [`.github/workflows/flatpak-tooling-drift-check.yml`](../../workflows/flatpak-tooling-drift-check.yml)
 — but that workflow still lists the pre-migration repo set and has not been
