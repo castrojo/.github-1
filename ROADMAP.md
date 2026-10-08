@@ -1,6 +1,6 @@
 # Organization Enablement Roadmap
 
-**Last updated**: 2026-09-02 | **Maintainer**: Tuna OS organization maintainers
+**Last updated**: 2026-10-08 | **Maintainer**: Tuna OS organization maintainers
 
 ## Mission
 
@@ -23,7 +23,7 @@ here affect the contributor experience across the portfolio.
 | P0 | Make inherited issue forms repository-neutral and keep image-specific fields local to `tuna-os/tunaos` | #32 | Not started |
 | P1 | Automate default-branch-aware refreshes of `ROADMAP-INDEX.md` | tuna-os/tunaos#1295 | Proposed; manual coverage reached 36/37 |
 | P1 | Complete adoption of the canonical Flatpak index action and retire the interim copy-drift guard | tuna-os/tunaos#1183 | In progress |
-| P1 | Give inherited planning artifacts a named human owner: remove automation bylines from the starter template and sweep the 37 committed files across 19 repositories that inherited them | #54 | Template fixed; repository sweep not started |
+| P1 | Give inherited planning artifacts a named human owner: remove automation bylines from the starter template and sweep the 37 committed files across 19 repositories that inherited them | #54 | Template fixed (#55); CI check added to prevent recurrence; repository sweep not started |
 | P2 | Define an owner and review cadence for org-level community-health files | #32 | Proposed |
 
 ## 2026 Q3 Exit Goals
