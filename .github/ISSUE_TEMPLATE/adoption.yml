@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for telling us how you use TunaOS! Filling this out adds you to
-        [ADOPTERS.md](https://github.com/tuna-os/tunaos/blob/main/ADOPTERS.md)
+        [ADOPTERS.md](https://github.com/tuna-os/tunaOS/blob/main/ADOPTERS.md)
         (Production Users, Development & Evaluation, or Ecosystem & Downstream
         Projects). We'll review it and open the ADOPTERS.md entry as a PR —
         no need to write the markdown yourself.
