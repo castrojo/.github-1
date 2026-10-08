@@ -1,0 +1,36 @@
+name: Arch Plan Contract Check
+
+# The reusable publish-flatpak.yml publishes whatever archs its callers pass in,
+# but the download and central-index steps used to only know about x86_64 and
+# aarch64 -- so a misspelled or unsupported architecture could publish a
+# registry tag with no index entry. arch-plan.py is the single place that
+# interprets the list; this workflow pins that interpretation (empty, duplicate,
+# misspelled, and future architectures must all fail) so the contract cannot
+# silently widen again. Run on changes to the planner and its own test, exactly
+# as the renovate policy check runs for its checker and self-test.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/arch-plan.py"
+      - "scripts/test-arch-plan.py"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/arch-plan.py"
+      - "scripts/test-arch-plan.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run arch-plan contract self-test
+        run: python3 scripts/test-arch-plan.py

@@ -31,7 +31,13 @@ on:
         required: true
         type: string
       archs:
-        description: JSON array of architectures to build, e.g. '["x86_64","aarch64"]'
+        description: >
+          JSON array of architectures to build, e.g. '["x86_64","aarch64"]'.
+          Constrained to the supported enum {x86_64,aarch64} and validated in
+          the arch-plan job before any build starts: an empty list, a
+          duplicate, or a value outside the enum (a misspelling or an
+          unsupported/future architecture) fails the run instead of
+          half-publishing a registry tag with no central-index entry.
         required: false
         type: string
         default: '["x86_64","aarch64"]'
@@ -94,13 +100,41 @@ on:
         required: true
 
 jobs:
+  # Preflight: validate inputs.archs once, before any privileged build starts,
+  # and emit the normalized plan the build and publish jobs consume. Failing
+  # here (empty / duplicate / unsupported arch) is what stops a bad list from
+  # producing a registry tag with no matching download or index step. Runs
+  # unconditionally (not gated by inputs.publish) so build-only validation on
+  # pull_request still fails fast on a bad archs list.
+  arch-plan:
+    name: Plan architectures
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      primary: ${{ steps.plan.outputs.primary }}
+      runners: ${{ steps.plan.outputs.runners }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate and normalize archs
+        id: plan
+        env:
+          ARCHS_INPUT: ${{ inputs.archs }}
+        # Reads inputs.archs via env, never interpolated into the script text
+        # (see AGENTS.md); exits non-zero on any invalid list.
+        run: python3 scripts/arch-plan.py
+
   build-oci:
     name: Build OCI (${{ matrix.arch }})
-    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    needs: [arch-plan]
+    # Runner comes from the plan, so an arch without a runner entry fails here
+    # loudly instead of silently landing on the x86_64 runner.
+    runs-on: ${{ fromJSON(needs.arch-plan.outputs.runners)[matrix.arch] }}
     strategy:
       fail-fast: false
       matrix:
-        arch: ${{ fromJSON(inputs.archs) }}
+        arch: ${{ fromJSON(needs.arch-plan.outputs.matrix) }}
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:${{ inputs.flatpak-builder-image }}
       options: --privileged
@@ -161,9 +195,17 @@ jobs:
 
   publish:
     name: Publish
-    needs: build-oci
+    needs: [build-oci, arch-plan]
     if: inputs.publish
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # One instance per arch in the plan -- each downloads its own artifact,
+        # pushes its own arch tag, and updates its own index entry. Nothing is
+        # hard-coded, so an arch the build produced can never skip its download
+        # or its central-index update.
+        arch: ${{ fromJSON(needs.arch-plan.outputs.matrix) }}
     steps:
       # Explicit per-arch downloads, not `pattern: 'oci-*'` -- confirmed by a
       # real failure (tuna-installer-cosmic run 33037056111) that
@@ -173,19 +215,11 @@ jobs:
       # instead, so `oci-x86_64/` never exists and the push step fails with
       # "missing oci-x86_64". Explicit name+path downloads don't have that
       # match-count-dependent behavior.
-      - name: Download x86_64 OCI artifact
-        if: contains(fromJSON(inputs.archs), 'x86_64')
+      - name: Download ${{ matrix.arch }} OCI artifact
         uses: actions/download-artifact@v8
         with:
-          name: oci-x86_64
-          path: oci-x86_64
-
-      - name: Download aarch64 OCI artifact
-        if: contains(fromJSON(inputs.archs), 'aarch64')
-        uses: actions/download-artifact@v8
-        with:
-          name: oci-aarch64
-          path: oci-aarch64
+          name: oci-${{ matrix.arch }}
+          path: oci-${{ matrix.arch }}
 
       - name: Log in to GHCR
         env:
@@ -199,45 +233,34 @@ jobs:
       - name: Push OCI to registry
         env:
           REGISTRY_AUTH_FILE: ${{ runner.temp }}/auth.json
+          PRIMARY: ${{ needs.arch-plan.outputs.primary }}
         run: |
           set -euo pipefail
-          read -ra archs <<<"$(python3 -c 'import json,sys; print(*json.loads(sys.argv[1]))' '${{ inputs.archs }}')"
-          primary="${archs[0]}"
+          arch="${{ matrix.arch }}"
+          dir="oci-${arch}"
+          [ -d "$dir" ] || { echo "::error::missing $dir"; exit 1; }
           version_tag=""
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             version_tag="${{ github.ref_name }}"
           fi
-          for arch in "${archs[@]}"; do
-            dir="oci-${arch}"
-            [ -d "$dir" ] || { echo "::error::missing $dir"; exit 1; }
-            skopeo copy "oci:${dir}" "docker://${{ inputs.registry }}/${{ inputs.repo-name }}:latest-${arch}"
-            if [ -n "$version_tag" ]; then
-              skopeo copy "oci:${dir}" "docker://${{ inputs.registry }}/${{ inputs.repo-name }}:${version_tag}-${arch}"
-            fi
-          done
-          # :latest (no arch suffix) tracks the primary arch, for anything
-          # that pulls this image by tag without knowing about the
-          # arch-qualified convention.
-          skopeo copy "oci:oci-${primary}" "docker://${{ inputs.registry }}/${{ inputs.repo-name }}:latest"
+          skopeo copy "oci:${dir}" "docker://${{ inputs.registry }}/${{ inputs.repo-name }}:latest-${arch}"
+          if [ -n "$version_tag" ]; then
+            skopeo copy "oci:${dir}" "docker://${{ inputs.registry }}/${{ inputs.repo-name }}:${version_tag}-${arch}"
+          fi
+          # :latest (no arch suffix) tracks the primary arch, chosen by the
+          # plan -- only the primary instance pushes it, so it never depends on
+          # which matrix instance happens to run first.
+          if [ "$arch" = "$PRIMARY" ]; then
+            skopeo copy "oci:${dir}" "docker://${{ inputs.registry }}/${{ inputs.repo-name }}:latest"
+          fi
 
-      # One publish-flatpak-index call per arch (only x86_64/aarch64 exist
-      # today across every tuna-os app) -- each call is its own independent
-      # clone/retry/push cycle, same as before consolidation.
-      - name: Update central index — x86_64
-        if: contains(fromJSON(inputs.archs), 'x86_64')
+      # One publish-flatpak-index call per arch in the plan (only x86_64/aarch64
+      # exist today across every tuna-os app) -- each call is its own
+      # independent clone/retry/push cycle, same as before consolidation.
+      - name: Update central index — ${{ matrix.arch }}
         uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
         with:
-          oci-dir: oci-x86_64
-          repo-name: ${{ inputs.repo-name }}
-          registry: ${{ inputs.registry }}
-          tags: latest
-          token: ${{ secrets.FLATPAK_INDEX_TOKEN }}
-
-      - name: Update central index — aarch64
-        if: contains(fromJSON(inputs.archs), 'aarch64')
-        uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
-        with:
-          oci-dir: oci-aarch64
+          oci-dir: oci-${{ matrix.arch }}
           repo-name: ${{ inputs.repo-name }}
           registry: ${{ inputs.registry }}
           tags: latest
