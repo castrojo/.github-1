@@ -29,6 +29,10 @@ TunaOS captures installer/desktop screens from QEMU, uploads artifacts even on f
 
 The reusable rule is: **test the product, retain the evidence, publish only validated evidence.**
 
+## Shared CI tooling
+
+Before writing your own workflows, read the [shared CI & actions guide](../../docs/SHARED-CI-GUIDE.md) — it lists every reusable workflow and composite action in `tuna-os/.github`, says which to adopt for each need, and covers the secrets, tokens, and files each one requires. The most common additions are `reusable-lint.yml` and `reusable-fork-safety.yml` for baseline PR checks, `ste-lint.yml` (seed a `.ste-budget` first), and `publish-flatpak.yml` (needs `FLATPAK_INDEX_TOKEN`). Tools are consumed by path and pinned `@main`, so a merge upstream is live for you at your next run.
+
 ## Release and operational guardrails
 
 - Serialize semantic releases on the protected default branch; queue rather than cancel releases.

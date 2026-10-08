@@ -103,6 +103,10 @@ python3 scripts/check-workflow-permissions.py .github/workflows
 
 `publish-flatpak.yml` and `ste-lint.yml` were the two workflows that lacked the block; `publish-flatpak.yml` takes `contents: write` (checkout + `gh release upload`) and `packages: write` (GHCR push + index update), `ste-lint.yml` takes `contents: read`.
 
+## Shared tooling guide
+
+This is the onboarding doc for the reusable workflows and composite actions here: which to adopt for each need, the secrets/tokens each requires, integration examples, and troubleshooting. New repos are pointed to it from `project-starter/docs/ADOPTING.md`.
+
 ## `.claude/skills/hive-contribute/`
 
 A skill that works the hive's ready-work queue **without registering a relay**,
