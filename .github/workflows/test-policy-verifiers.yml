@@ -1,0 +1,54 @@
+name: Policy Verifier Tests
+
+# Unit + integration tests for the extracted policy verifiers in scripts/.
+#
+# These verifiers used to live embedded in the reusable-ci-contract.yml and
+# reusable-fork-safety.yml heredocs, where they could not be unit-tested. They
+# now live as importable modules; this workflow runs their test scripts directly
+# (fast, hermetic) and then runs the two verifiers end-to-end against this
+# repository's own workflows to prove the CLIs still work after extraction.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-verifiers:
+    name: Policy Verifier Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python3 -m pip install pyyaml
+
+      - name: Test CI contract verifier
+        run: python3 scripts/test-verify-ci-contract.py
+
+      - name: Test fork safety verifier
+        run: python3 scripts/test-verify-fork-safety.py
+
+      - name: Run CI contract verifier end-to-end
+        # No green-criteria.yml in this repo, so this is expected to skip
+        # (exit 0); a criteria file present in a consumer repo would be checked.
+        env:
+          CRITERIA_PATH: .github/green-criteria.yml
+          WORKFLOWS_DIR: .github/workflows
+        run: python3 scripts/verify-ci-contract.py
+
+      - name: Run fork safety verifier end-to-end
+        env:
+          WORKFLOWS_DIR: .github/workflows
+        run: python3 scripts/verify-fork-safety.py
