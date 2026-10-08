@@ -106,35 +106,35 @@ scope, not just the answers.
 
 ## Regenerating this table
 
-This is a manual, point-in-time snapshot, not yet an automated one. Until the
-automation tracked by `tuna-os/tunaos#1295` lands, refresh it at each quarter
-boundary and after any roadmap or repository lifecycle campaign:
+This table is kept fresh by an automated workflow, not a manual pass. The
+`roadmap-index-automation` workflow in `.github/workflows/` runs
+`scripts/roadmap-index.py --check` on a weekly schedule and opens a pull
+request whenever the live count no longer matches this file. It is the
+implementation of the "proposed next step" from the September 2 pass
+(tunaos#1295).
+
+To run it by hand:
 
 ```bash
-gh repo list tuna-os --limit 200 --json name,isArchived --jq \
-  '.[] | select(.isArchived==false) | .name' | sort > /tmp/active_repos.txt
-while read -r repo; do
-  branch=$(gh api "repos/tuna-os/$repo" --jq '.default_branch')
-  if gh api "repos/tuna-os/$repo/contents/ROADMAP.md?ref=$branch" >/dev/null 2>&1; then
-    echo "$repo|$branch|yes"
-  else
-    echo "$repo|$branch|no"
-  fi
-done < /tmp/active_repos.txt
+# Verify the committed table matches live data (exit 1 if stale):
+python3 scripts/roadmap-index.py --check
+
+# Or rewrite this file in place with the current live state:
+python3 scripts/roadmap-index.py --write
 ```
 
-Note the exit-code check (`>/dev/null 2>&1; then`) rather than capturing
-`gh api`'s stdout with a `--jq` filter and checking string emptiness — on a
-404, `gh api` prints the raw JSON error body to stdout *past* a `--jq`
-filter, which produces false "has a roadmap" positives if you test the
-captured string instead of the command's exit status.
+The script derives its scope from `gh repo list tuna-os --limit 200` (every
+active, non-archived repo — so a newly created repository is noticed, not just
+a roadmap missing from an existing one), then for each repo reads
+`gh api repos/tuna-os/<repo>/contents/ROADMAP.md?ref=<default_branch>` against
+the repo's *default* branch (never a hardcoded `main`). It replaces the
+`## Coverage:` heading, the "Last verified" date, and the table body, leaving
+the surrounding prose untouched.
 
-**Proposed next step** (not done in this pass): wire the block above into a
-scheduled GitHub Actions workflow in this repo (`bst-ci`-style) that
-re-generates this table and opens a PR on drift, so it can't go stale the
-way `tunaos/ROADMAP.md`'s Community section did. Deliberately not
-implementing that blind in this pass — a scheduled workflow needs a real
-CI run to validate, not just local reasoning about the script.
+The roadmap check keys off `gh api`'s exit status rather than parsing its
+stdout — on a 404 `gh api` prints the raw JSON error body to stdout *past* a
+`--jq` filter, so testing the captured string yields false "has a roadmap"
+positives. `has_roadmap()` in the script checks the exit code instead.
 
 ## Related
 
