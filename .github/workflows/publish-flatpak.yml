@@ -225,7 +225,12 @@ jobs:
       # clone/retry/push cycle, same as before consolidation.
       - name: Update central index — x86_64
         if: contains(fromJSON(inputs.archs), 'x86_64')
-        uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
+        # Pinned to an immutable SHA, never @main (tuna-os/.github#84): this is a
+        # nested action from the same repo, and @main is a mutable branch -- a
+        # consumer pinned to a commit or release would otherwise load it from the
+        # current default branch. This action writes the central index, so a
+        # mixed-version run is not harmless.
+        uses: tuna-os/.github/.github/actions/publish-flatpak-index@da0153d94472c0e645f69820b3bae57487be3c43 # da0153d
         with:
           oci-dir: oci-x86_64
           repo-name: ${{ inputs.repo-name }}
@@ -235,7 +240,9 @@ jobs:
 
       - name: Update central index — aarch64
         if: contains(fromJSON(inputs.archs), 'aarch64')
-        uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
+        # Same immutable-SHA pin as the x86_64 call above (tuna-os/.github#84);
+        # @main would load this nested action from a mutable branch.
+        uses: tuna-os/.github/.github/actions/publish-flatpak-index@da0153d94472c0e645f69820b3bae57487be3c43 # da0153d
         with:
           oci-dir: oci-aarch64
           repo-name: ${{ inputs.repo-name }}

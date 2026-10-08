@@ -10,13 +10,17 @@ Replace a repo's local `python3 .github/scripts/update-index.py ...` call
 with:
 
 ```yaml
-- uses: tuna-os/.github/.github/actions/update-flatpak-index@main
+        - uses: tuna-os/.github/.github/actions/update-flatpak-index@<sha>
   with:
     oci-dir: oci/mandelbrot-oci-x86_64
     index-file: index-repo/static/flatpak/index/static
     repo-name: tuna-os/mandelbrot
     tags: latest
 ```
+
+Pin `<sha>` to a reviewed commit SHA of this repo rather than `@main`
+(tuna-os/.github#84): a self-reference on a mutable branch loads the action
+from the current default branch.
 
 `registry` defaults to `ghcr.io`; `index-file` defaults to `index/static`.
 For multi-arch publishes, call the action once per architecture (matching

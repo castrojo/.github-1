@@ -60,7 +60,10 @@ jobs:
           # diff against, and the report would degrade to whole-repo noise.
           fetch-depth: 0
 
-      - uses: tuna-os/.github/.github/actions/ste-lint@main
+      # Pinned to an immutable SHA, never @main (tuna-os/.github#84): a nested
+      # action from the same repo, and @main is a mutable branch that would
+      # otherwise load from the current default branch.
+      - uses: tuna-os/.github/.github/actions/ste-lint@da0153d94472c0e645f69820b3bae57487be3c43 # da0153d
         with:
           budget-file: ${{ inputs.budget-file }}
           budget: ${{ inputs.budget }}

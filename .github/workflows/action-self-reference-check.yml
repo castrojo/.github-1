@@ -1,0 +1,43 @@
+name: Action Self-Reference Check
+
+# tuna-os/.github#84: keeps this repo's own reusable workflows from resolving
+# a nested action from a mutable branch. The pin alone is not enough -- a
+# reviewer could unpin it and the change would merge green. This gate runs the
+# checker on every push and pull request to main so a mutable self-reference
+# fails CI before it lands.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/action-self-reference-check.yml"
+      - ".github/workflows/publish-flatpak.yml"
+      - ".github/workflows/ste-lint.yml"
+      - "scripts/check-action-self-reference.py"
+      - "scripts/test-action-self-reference.py"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/action-self-reference-check.yml"
+      - ".github/workflows/publish-flatpak.yml"
+      - ".github/workflows/ste-lint.yml"
+      - "scripts/check-action-self-reference.py"
+      - "scripts/test-action-self-reference.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check self-references pin to an immutable SHA
+        run: python3 scripts/check-action-self-reference.py
+      # The gate's rule -- self-references must pin to a 40-char hex SHA,
+      # everything else is allowed -- is pinned here so it cannot erode.
+      - name: Checker self-test
+        run: python3 scripts/test-action-self-reference.py

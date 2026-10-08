@@ -29,13 +29,17 @@ release just silently doesn't show up.
 Replace the whole clone → update-index.py → commit → push block with:
 
 ```yaml
-- uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
+        - uses: tuna-os/.github/.github/actions/publish-flatpak-index@<sha>
   with:
     oci-dir: oci/mandelbrot-oci-x86_64
     repo-name: tuna-os/mandelbrot
     tags: latest
     token: ${{ secrets.FLATPAK_INDEX_TOKEN }}
 ```
+
+Pin `<sha>` to a reviewed commit SHA of this repo rather than `@main`
+(tuna-os/.github#84): a self-reference on a mutable branch loads the action
+from the current default branch.
 
 For multi-arch publishes, call it once per architecture, same as before —
 each call is its own independent clone/retry/push cycle. `index-file`
