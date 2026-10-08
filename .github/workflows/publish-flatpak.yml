@@ -93,8 +93,13 @@ on:
       FLATPAK_INDEX_TOKEN:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   build-oci:
+    permissions:
+      contents: read
     name: Build OCI (${{ matrix.arch }})
     runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
@@ -160,6 +165,9 @@ jobs:
           retention-days: 7
 
   publish:
+    permissions:
+      contents: read
+      packages: write
     name: Publish
     needs: build-oci
     if: inputs.publish
@@ -244,6 +252,8 @@ jobs:
           token: ${{ secrets.FLATPAK_INDEX_TOKEN }}
 
   release-bundles:
+    permissions:
+      contents: write
     name: Attach bundles to release
     needs: publish
     if: inputs.attach-bundles && startsWith(github.ref, 'refs/tags/')
