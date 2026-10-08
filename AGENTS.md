@@ -47,25 +47,57 @@ canonical, and opens or comments on an issue when any has drifted.
 
 Two things to know before touching it:
 
-- **It has failed on every scheduled run since 2026-08-17.** `dualcut` is in
-  its list and has drifted; the other seven no longer carry the file, which
-  the workflow reports as a warning.
-- **Its list is not the set of repos that carry a copy.** On default branches
-  today:
+- **It fails only when a *checked* repo still carries a drifted copy; a missing
+  file is a warning, not a failure.** As of 2026-10-08 all eight repos in its
+  list return 404 at `.github/scripts/update-index.py` — they have migrated
+  onto the composite action (gtk-office-suite #224, mandelbrot, dualcut #192,
+  the four `tuna-installer-*`, and `bootc-installer`). The check is therefore
+  expected to go green on its next scheduled run; the last observed failure
+  (2026-10-05) predates the final migrations. See "Operational status" below.
+- **Its list is not the set of repos that carry a copy.** Two repos still ship a
+  copy the check never looks at, so drift there is invisible:
 
 | repo | path | blob | checked? |
 |---|---|---|---|
 | `.github` | `.github/actions/update-flatpak-index/update-index.py` | `6eaa8186` | canonical |
-| `dualcut` | `.github/scripts/update-index.py` | `c6e3acca` | yes — drifted |
-| `flatpak-index` | `scripts/update-index.py` | `b7dc0458` | **no** |
 | `docs` | `.github/scripts/update-index.py` | `b7dc0458` | **no** |
-| `Tavern` | `.github/scripts/update-index.py` | `ec916224` | **no** |
-| `Tavern` | `scripts/update-index.py` | `127aed10` | **no** |
+| `flatpak-index` | `scripts/update-index.py` | `4c36d624` | **no** |
 
 `tuna-os/flatpak-index`'s copy describes *itself* as the canonical one, which
 is a second definition the org's check does not recognise. Migrating a repo
 onto the composite action is the fix that removes the copy rather than
 watching it.
+
+## Operational status
+
+`flatpak-tooling-drift-check.yml` is the interim guard for
+[tuna-os#1183](https://github.com/tuna-os/tunaOS/issues/1183). This section
+states what its failures mean, who owns them, and how it is resolved — so a
+maintainer does not have to reconstruct it from a long-running red check.
+
+- **Why it is still running — on purpose.** It exists only until every repo
+  that carries a byte-copied `update-index.py` has migrated onto the
+  `update-flatpak-index` composite action in this repo. While any *checked* repo
+  still carries a drifted copy it fails; that failure is the symptom the guard
+  exists to surface, not a broken pipeline. It is **not** a blocker and should
+  not be disabled or archived — it is the thing that goes green as migration
+  finishes, and the only watcher of the two remaining carriers above.
+- **Ownership.** The guard lives in the org defaults repo (`tuna-os/.github`),
+  whose code owner is `@hanthor` (`.github/CODEOWNERS`). The *resolution* —
+  migrating a repo — is per repo and was tracked under
+  [tuna-os#1183](https://github.com/tuna-os/tunaOS/issues/1183), closed
+  2026-08-23 as the duplication *finding*; the repo-by-repo migration itself is
+  what is left to do.
+- **Resolution plan.** Finish the migration the eight checked repos already
+  started: port `docs` and `flatpak-index` onto the composite action so there
+  is nothing left to drift, and widen the workflow's repo list so it matches the
+  repos that *actually* carry a copy (it currently misses both). Once the
+  composite action is universal, delete the schedule — the guard has done its
+  job.
+- **Scheduled maintenance.** Runs `0 6 * * 1` (Mon 06:00 UTC) plus
+  `workflow_dispatch`. The recurring failures were expected while migration was
+  incomplete and are now clearing. A red run is not urgent: confirm which
+  checked repo is still drifted, migrate it, and the next run is green.
 
 ## Default branches are not all `main`
 
