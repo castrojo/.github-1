@@ -53,6 +53,6 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 ## Getting help
 
 - Ask in the relevant issue or PR.
-- See the [`tuna-os/docs` repository](https://github.com/tuna-os/docs) for architecture and build-pipeline reference documentation. Start with its `README.md` for an overview of the image factory and repository organization.
+- See the [architecture guide](https://github.com/tuna-os/docs/blob/main/docs/architecture.md) in `tuna-os/docs` — architecture overview, per-repository map, and the image/ISO build-pipeline reference.
 - For security issues, use the private channel described in `SECURITY.md` —
   never paste secrets or exploit details into a public issue.
