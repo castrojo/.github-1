@@ -136,6 +136,55 @@ way `tunaos/ROADMAP.md`'s Community section did. Deliberately not
 implementing that blind in this pass — a scheduled workflow needs a real
 CI run to validate, not just local reasoning about the script.
 
+## Maintenance & ownership
+
+This section closes the gaps the issue tracker flagged for this file: who
+refreshes it, when, what triggers a refresh, and what happens if neither the
+manual refresh nor the planned automation lands.
+
+**Owner.** Maintenance is owned by the `.github` repo code owner, `@hanthor`
+(per `.github/CODEOWNERS`), who is accountable for the table staying current.
+Routine refreshes are performed on the code owner's behalf by a guide agent
+picking the item off the hive ready-work queue; the code owner accepts the
+result or overrides it. This is written down so the accountability survives a
+change of agent rather than a change of human — the "who" is not tied to one
+person's memory.
+
+**Cadence & triggers.** Refresh at each quarter boundary and after any roadmap
+or repository lifecycle campaign (a new repo, an archive, or a default-branch
+change). "Quarter boundary" means the last day of the calendar quarter:
+
+| Quarter | Boundary |
+|---|---|
+| Q1 | March 31 |
+| Q2 | June 30 |
+| Q3 | September 30 |
+| Q4 | December 31 |
+
+A refresh due on a boundary stays "current" until it is actually run, even if
+it lands a few days into the following quarter. Routing: the trigger is
+recognised by whoever runs the regeneration block in
+"Regenerating this table"; the result is opened as a PR against `main` and
+reviewed by the code owner.
+
+**Automation status.** The scheduled workflow that would regenerate this table
+automatically and open a PR on drift is the "Proposed next step" in the section
+above and is **not yet built** — no file under `.github/workflows/` performs
+this refresh, so the table is still a manual, point-in-time snapshot. The
+finding this inventory answers, `tuna-os/tunaos#1295`, was **closed on
+2026-09-24**; that closed the coverage-gap *finding*, not the automation, which
+remains an open implementation item (the proposed next step). Until it lands,
+the cadence above is the only thing keeping the table honest.
+
+**Escalation if automation stalls.** If the quarterly manual refresh is not
+completed within 14 days of a quarter boundary, or the scheduled workflow is
+still unimplemented at the next quarter boundary after it was planned, the
+code owner files or bumps a follow-up issue to either ship the workflow or
+re-baseline this table by hand. The inventory is deliberately not allowed to
+go stale silently the way `tunaos/ROADMAP.md`'s Community section did: the
+"Last verified" date on line 3 is only ever advanced when a refresh actually
+runs, so a stale date can never masquerade as current coverage.
+
 ## Related
 
 - tunaos#1295 — original coverage-gap finding (5/38 at filing)
