@@ -93,6 +93,9 @@ on:
       FLATPAK_INDEX_TOKEN:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   build-oci:
     name: Build OCI (${{ matrix.arch }})
