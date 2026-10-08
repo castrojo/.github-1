@@ -84,16 +84,21 @@ runs:
 
         WORKDIR="$(mktemp -d)"
         INDEX_REPO="$WORKDIR/index-repo"
+        # Build the Authorization header without ever placing the token (or the
+        # encoded credential) in a command argument. The token is read from a
+        # heredoc over stdin into `cat`, base64-encoded, and exported as
+        # GIT_HTTP_EXTRA_HEADERS, which git reads natively for every http(s)
+        # request -- the clone and the push included. It therefore never appears
+        # in ps / /proc/<pid>/cmdline, and never lands in .git/config.
+        AUTH_B64=$( { printf 'x-access-token:'; cat; } <<EOF | tr -d '\n' | base64 -w0
+        $FLATPAK_INDEX_TOKEN
+        EOF
+        )
+        export GIT_HTTP_EXTRA_HEADERS="AUTHORIZATION: basic ${AUTH_B64}"
 
         clone_docs() {
           rm -rf "$INDEX_REPO"
           git clone --depth 1 "https://github.com/${DOCS_REPO}.git" "$INDEX_REPO"
-          # Header-based auth so the token never lands in .git/config, `git
-          # remote -v`, or process listings. Use stdin to keep token out of
-          # process arguments where it could be captured by ps/proc inspection.
-          local auth_header
-          auth_header="AUTHORIZATION: basic $(echo -n "x-access-token:$FLATPAK_INDEX_TOKEN" | base64 -w0)"
-          git -C "$INDEX_REPO" config --local http.extraheader "$auth_header"
           git -C "$INDEX_REPO" config user.name "github-actions[bot]"
           git -C "$INDEX_REPO" config user.email "github-actions[bot]@users.noreply.github.com"
         }
