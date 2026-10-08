@@ -14,7 +14,13 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 | Apps | `tuna-os/gtk-office-suite` (Letters, Tables, Decks), `tuna-os/Tavern` |
 | Docs | `tuna-os/docs` (index lives in `docs/static/flatpak/index/static`) |
 
-**Note:** This table is a representative sample. For the complete, authoritative inventory of active repositories and their default branches, see [`ROADMAP-INDEX.md`](ROADMAP-INDEX.md). New repositories are added regularly — check that document to discover them.
+**Note:** This table is a representative sample, not an exhaustive list. For the
+complete, authoritative inventory of active repositories and their default branches,
+see [`ROADMAP-INDEX.md`](ROADMAP-INDEX.md). That document also marks and excludes
+archived repositories, so it is how you tell active work from retired work. New
+repositories are added regularly — check it to discover them, or query the GitHub API
+directly (`gh repo list tuna-os --limit 200`) to see everything the org currently
+exposes, including repos whose default branch is not `main`.
 
 ## Getting started
 
