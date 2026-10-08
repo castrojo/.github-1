@@ -105,7 +105,7 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:${{ inputs.flatpak-builder-image }}
       options: --privileged
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Empty `repository`/`ref` is not the same as omitting them for
           # actions/checkout -- an empty string takes the same "not provided"
@@ -130,7 +130,7 @@ jobs:
         # in production; the other five repos were on the older v6 with no
         # comment explaining an intentional avoidance of v6.7, so this is a
         # bump for them, not a downgrade for anyone.
-        uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
+        uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
         with:
           manifest-path: ${{ inputs.manifest-path }}
           cache-key: flatpak-builder-${{ inputs.repo-name }}-${{ github.sha }}-${{ matrix.arch }}
@@ -145,7 +145,7 @@ jobs:
             repo oci-${{ matrix.arch }} "${{ inputs.app-id }}"
 
       - name: Upload OCI artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: oci-${{ matrix.arch }}
           path: oci-${{ matrix.arch }}/
@@ -153,7 +153,7 @@ jobs:
 
       - name: Upload bundle artifact
         if: inputs.attach-bundles
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bundle-${{ matrix.arch }}
           path: ${{ inputs.app-id }}-${{ matrix.arch }}.flatpak
@@ -175,14 +175,14 @@ jobs:
       # match-count-dependent behavior.
       - name: Download x86_64 OCI artifact
         if: contains(fromJSON(inputs.archs), 'x86_64')
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: oci-x86_64
           path: oci-x86_64
 
       - name: Download aarch64 OCI artifact
         if: contains(fromJSON(inputs.archs), 'aarch64')
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: oci-aarch64
           path: oci-aarch64
@@ -249,7 +249,7 @@ jobs:
     if: inputs.attach-bundles && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: 'bundle-*'
           merge-multiple: true
