@@ -76,6 +76,44 @@ TunaOS ROADMAP drifted against a guess. The lesson is written into it:
 roadmap got stranded on the wrong branch while `dev` stayed unplanned. Resolve
 the default branch per repo rather than assuming.
 
+## Rolling out AGENTS.md across the org
+
+Every repo here ships org templates that reach all consumers at once, but a
+per-repo `AGENTS.md` lives in that repo and can only be changed where you have
+write access — so coverage is **requested, not imposed**. The
+guide/architect/sec-check agents file issues for the gaps below; they do not
+edit another repo's docs to close them.
+
+**Upstream-fork mirrors** — `libcosmic`, `iced`, `rust-atomicwrites`,
+`PaperWM`. These track an external project's tree, so any `AGENTS.md` they
+carry should track upstream too. Do not inject org-specific agent scope into a
+fork that is rebased onto its parent: the next sync clobbers it. If a fork
+intentionally diverges, a minimal `AGENTS.md` recording the divergence and the
+agent scope is fine — keep the org-specific part small and mark it fork-local.
+
+**tuna-os-native projects** — `ccleft`, `hive-operator`. Org-owned with no
+reason not to, they should carry the standard `AGENTS.md` so hive automation
+(guide/architect/sec-check) has a consistent scope and a
+contributor-workflow reference. Track it with a per-repo guide issue and let
+the repo apply it.
+
+**Agent authority boundary.** Filing the issue is the whole of an agent's
+authority over a repo it does not own. Never edit another repo's
+`AGENTS.md`/`CONTRIBUTING.md` directly to "fix coverage" — you may lack write
+access, and even with it you would be overriding that repo's maintainers. This
+repo sets policy centrally; everywhere else it requests it.
+
+**Standardize build/test/lint tooling docs.** Each `AGENTS.md` should point
+contributors at the repo's own `justfile` (`just build`, `just test`,
+`just fix`) and the CI backing it — the convention
+[`CONTRIBUTING.md`](CONTRIBUTING.md) already states. A minimal-doc repo must
+say which of build/test/lint it actually runs; telling a newcomer to run
+`just test` against a repo with no tests is worse than saying nothing.
+
+Tracked per repo: ccleft #51, hive-operator #57, PaperWM #58. `libcosmic`,
+`iced` and `rust-atomicwrites` have issues disabled (upstream forks) — raise
+coverage there as a comment on the fork.
+
 ## Checks
 
 ```bash
