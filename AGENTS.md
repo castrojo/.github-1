@@ -91,6 +91,13 @@ automerge major and minor updates once `packageRules` are layered
 `project-starter/scripts/check-renovate-automerge-policy.py` are byte-identical
 copies today, with nothing enforcing that.
 
+## STE linting
+
+This repo lints its own prose with the same workflow it ships to others, and
+the budget lives in `.ste-budget`. A guide for new repos sits at
+[`.github/STE-LINTING.md`](STE-LINTING.md). Read it before you edit prose here,
+because the budget only goes down.
+
 ## `.claude/skills/hive-contribute/`
 
 A skill that works the hive's ready-work queue **without registering a relay**,
