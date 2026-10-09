@@ -24,6 +24,8 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
    branch. We use the `arch/`, `fix/`, `feat/`, `chore/` prefix convention.
 3. **Check the repo's `AGENTS.md` / `justfile`** — most repos standardize
    build/test/lint behind `just` recipes (`just build`, `just test`, `just fix`).
+  Prose here must pass the STE check. Read [`.github/STE-LINTING.md`](STE-LINTING.md)
+  before you write prose, and keep the budget in `.ste-budget`.
 4. **Sign your commits** — every commit must be DCO-signed-off
    (`git commit -s`). This certifies you wrote the change and can license it.
 
