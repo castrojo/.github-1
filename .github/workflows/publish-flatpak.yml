@@ -93,9 +93,12 @@ on:
       FLATPAK_INDEX_TOKEN:
         required: true
 
+# Explicit least-privilege: this workflow is reusable (workflow_call) and
+# callers invoke it with `secrets: inherit`, so without a top-level block it
+# inherits the caller's GITHUB_TOKEN scope. Declare the minimum here:
+# contents: write covers checkout and `gh release upload` (release assets);
+# packages: write covers pushing the OCI images to GHCR and the index push.
 permissions:
-  # contents: write covers checkout and `gh release upload` (release assets);
-  # packages: write covers pushing the OCI images to GHCR and the index push.
   contents: write
   packages: write
 

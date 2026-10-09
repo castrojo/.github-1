@@ -46,6 +46,9 @@ on:
         type: string
         default: ""
 
+# Explicit least-privilege: a reusable workflow inherits the caller's
+# GITHUB_TOKEN scope. Only a code checkout runs here, so contents: read is
+# the minimum.
 permissions:
   contents: read
 
