@@ -57,6 +57,19 @@ runs:
       run: |
         set -euo pipefail
 
+        # Mask the token before it is ever used, so GitHub replaces it with
+        # *** in every log line that follows. The action receives it as this
+        # env var (env: block above); reference it as $FLATPAK_INDEX_TOKEN,
+        # never ${{ inputs.token }}. The expression form is interpolated by
+        # GitHub's evaluator into the script *text* before bash parses it, so a
+        # value with shell metacharacters could break out (see AGENTS.md "Don't
+        # put an input back into a script body"). The env var is data to bash,
+        # not parsed shell. This closes the log-leak channel the token's own
+        # exposure in this shell step allows; it does not remove the token from
+        # /proc/$$/environ or process memory -- that needs OIDC / short-lived
+        # credentials, the long-term fix documented in the README.
+        echo "::add-mask::$FLATPAK_INDEX_TOKEN"
+
         read -ra tag_args <<<"$TAGS"
         if [ "${#tag_args[@]}" -eq 0 ]; then
           echo "::error::tags input is empty" >&2

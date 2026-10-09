@@ -24,6 +24,29 @@ tag — but `flatpak remote-ls`/`flatpak update` never see it, because the
 served index was never updated. Nothing retries; nothing alerts. The
 release just silently doesn't show up.
 
+## Security
+
+The action receives the `tuna-os/docs` push credentials as the `token` input,
+bound to the `FLATPAK_INDEX_TOKEN` env var in the shell step. Commit
+7c122b4 moved it out of command-line arguments (so `ps aux` can't capture it),
+but it still sits in the step's environment.
+
+- **Log leak -- mitigated.** The action emits `::add-mask::$FLATPAK_INDEX_TOKEN`
+  before the token is first used, so GitHub replaces it with `***` in every log
+  line after that -- covering the `curl -H "Authorization: Bearer ..."` check,
+  the git auth header, and any error message that echoes the env var. This is
+  the immediate fix for tuna-os/.github#162. It references `$FLATPAK_INDEX_TOKEN`
+  (the env var), never `${{ inputs.token }}`, so GitHub's expression evaluator
+  never parses the secret value as shell.
+- **Environment exposure -- residual.** Masking only hides the token from logs;
+  it stays in `/proc/$$/environ` and process memory, so a compromised
+  dependency or step in the same job could still read it. Closing that needs
+  GitHub Actions support for passing secrets over a file descriptor, or a switch
+  to OIDC / short-lived credentials -- an upstream decision, not something this
+  action can implement alone. Until then, keep the token scoped to the minimum
+  (Contents: write to `tuna-os/docs` only) and run only first-party steps in the
+  publish job.
+
 ## Usage
 
 Replace the whole clone → update-index.py → commit → push block with:
