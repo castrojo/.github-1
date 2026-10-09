@@ -35,6 +35,27 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 - [ ] No secrets or machine-specific paths are committed
 - [ ] Docs/changelog updated if behavior changed
 
+## Workflow permissions
+
+Every workflow in this repo — and every workflow in a tuna-os repo that adopts
+the shared linter — **must declare a top-level `permissions:` block**. The
+GitHub default is `permissions: all`, which hands CI jobs an unrestricted token;
+that over-broad access is the supply-chain risk this baseline closes
+(tuna-os/.github#138).
+
+- **Least privilege.** Declare only the scopes a job actually uses; the moment
+  any scope is declared, every unspecified scope is `none`.
+- **Reusable (`workflow_call`) workflows inherit the caller's token.** They can
+  only ever be *downgraded* by the caller, never raised, so a reusable workflow
+  with no top-level `permissions:` inherits the caller's token exactly. Declare
+  your own scopes.
+- **Common cases.** A pipeline that pushes to GHCR or uploads release assets
+  needs `contents: write` and `packages: write`. A read-only check needs only
+  `contents: read`.
+
+The fork-safety linter (`.github/workflows/reusable-fork-safety.yml`) flags any
+`pull_request` or `workflow_call` workflow that is missing a top-level block.
+
 ## Architecture expectations
 
 - **This is an image factory, not a distro.** Changes that alter built images

@@ -92,6 +92,15 @@ jobs:
 
           files = sorted(list(workflows_dir.glob("*.yml")) + list(workflows_dir.glob("*.yaml")))
           pr_workflows = [f for f in files if "pull_request" in get_triggers(load_yaml(f))]
+          # Reusable (workflow_call) workflows run under the CALLER's token and
+          # can only ever be downgraded by it (never elevated), so a reusable
+          # workflow with no top-level `permissions:` inherits the caller's token
+          # exactly -- the over-broad-token finding this check exists to catch.
+          # The pull_request loop above misses them: it only scans trigger-based
+          # workflows, so the two reusable publish/lint pipelines slipped through.
+          reusable_workflows = [
+              f for f in files if "workflow_call" in get_triggers(load_yaml(f))
+          ]
 
           print(f"Checking {len(pr_workflows)} pull_request workflow(s) in {workflows_dir}...")
           violations = []
@@ -137,6 +146,23 @@ jobs:
                           continue
                       what = "secrets " + ",".join(sorted(set(secrets))) if secrets else "a write action"
                       violations.append(f"{wf.name}: job {job_id!r} step {step.get('name', '?')!r} uses {what} without fork guard")
+
+          # 1b. Reusable (workflow_call) workflows inherit the caller's token, so
+          # they must declare their own top-level permissions -- a reusable
+          # workflow with none inherits the caller's token exactly, which is the
+          # over-broad-token finding this check exists to catch.
+          for wf in reusable_workflows:
+              doc = load_yaml(wf)
+              if "permissions" not in doc:
+                  jobs = [
+                      j for j, body in (doc.get("jobs") or {}).items()
+                      if "uses" not in (body or {})
+                  ]
+                  if jobs:
+                      violations.append(
+                          f"{wf.name}: reusable workflow_call workflow lacks a "
+                          "top-level `permissions:` block (inherits caller token scope)."
+                      )
 
           if violations:
               print(f"❌ Fork safety violations found ({len(violations)}):")
