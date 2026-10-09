@@ -77,5 +77,6 @@ baseline called for by
 
 - Ask in the relevant issue or PR.
 - See the [`tuna-os/docs` repository](https://github.com/tuna-os/docs) for architecture and build-pipeline reference documentation. Start with its `README.md` for an overview of the image factory and repository organization.
+- To tell an active repository from a retired one, see [`ROADMAP-INDEX.md`](ROADMAP-INDEX.md) (the active-repo inventory) and [`REPO_LIFECYCLE.md`](REPO_LIFECYCLE.md) (the supersede/archive process).
 - For security issues, use the private channel described in `SECURITY.md` —
   never paste secrets or exploit details into a public issue.
