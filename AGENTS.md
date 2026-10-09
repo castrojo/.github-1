@@ -36,6 +36,36 @@ multi-tag case actually needs. No caller was exploitable — the only one passes
 a literal `latest` — but this action is the migration target for eight repos
 whose jobs hold `packages: write` and `FLATPAK_INDEX_TOKEN`.
 
+## Vendored scripts and drift risk
+
+Scripts in this repo are sometimes **byte-copied** into other org repositories.
+The copies share no source of truth, so a fix in one place does not propagate
+and the copies drift apart silently — the same failure class as the ROADMAP
+drift that `ROADMAP-INDEX.md` exists to catch. Two copies are known today:
+
+| Script | Canonical source | Vendored copies | Drift-checked? |
+|---|---|---|---|
+| `update-index.py` | `tuna-os/flatpak-index/scripts/update-index.py` | `.github/actions/update-flatpak-index/` here; `.github/scripts/` in eight app repos | partially — see below |
+| `check-renovate-automerge-policy.py` | none | `project-starter/scripts/` | no |
+
+To tell which copy is authoritative, check whether the repo that ships it names
+a canonical source. `update-index.py` does: the action copy here is a synced
+copy of `tuna-os/flatpak-index`, and the app-repo copies in `.github/scripts/`
+are the ones that drift. `check-renovate-automerge-policy.py` has no canonical
+at all — the two copies here are merely identical, and nothing verifies they
+stay that way.
+
+The [flatpak-tooling-drift-check](.github/workflows/flatpak-tooling-drift-check.yml)
+covers only this script, and only the repos on its own hardcoded list. It is an
+interim guard for update-index.py — see the drift-check section below for what
+it misses.
+
+The migration strategy is the same for either copy: do the work through the
+shared source — the composite action and reusable workflow here, or
+`tuna-os/flatpak-index` for `update-index.py` — and **delete the vendored copy**
+rather than editing a second copy and hoping it matches. A check can only tell
+you that copies have already drifted; removing the copy is what stops it.
+
 ## The drift check, and what it does not cover
 
 `flatpak-tooling-drift-check.yml` is an interim guard for
@@ -89,7 +119,7 @@ automerge major and minor updates once `packageRules` are layered
 
 `scripts/check-renovate-automerge-policy.py` and
 `project-starter/scripts/check-renovate-automerge-policy.py` are byte-identical
-copies today, with nothing enforcing that.
+copies today with nothing enforcing that — see the vendored-scripts section above.
 
 ## Workflow permissions check
 
