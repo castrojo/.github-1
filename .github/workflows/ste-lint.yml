@@ -39,7 +39,7 @@ on:
       runs-on:
         required: false
         type: string
-        default: ubuntu-latest
+        default: ubuntu-24.04
       checkout-ref:
         description: Ref to check out. Empty means the ref that triggered the caller.
         required: false
