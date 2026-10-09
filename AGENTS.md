@@ -76,6 +76,10 @@ TunaOS ROADMAP drifted against a guess. The lesson is written into it:
 roadmap got stranded on the wrong branch while `dev` stayed unplanned. Resolve
 the default branch per repo rather than assuming.
 
+Keeping `ROADMAP-INDEX.md` accurate is documented in
+[`.github/ROADMAP-INDEX-MAINTENANCE.md`](.github/ROADMAP-INDEX-MAINTENANCE.md) —
+scope, refresh procedure, the hardcoded-`main` trap, and the automation plan.
+
 ## Checks
 
 ```bash

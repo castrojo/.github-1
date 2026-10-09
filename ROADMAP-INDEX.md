@@ -2,6 +2,8 @@
 
 **Last verified**: 2026-09-02 · **Source**: `gh api repos/tuna-os/<repo>/contents/ROADMAP.md?ref=<default_branch>` against every active (non-archived) repository returned by `gh repo list tuna-os --limit 200`, which is currently **40** repositories.
 
+**Maintenance.** The procedure that keeps this snapshot accurate — scope, why it drifts, the refresh steps, the scope trap, and the automation plan — lives in [`.github/ROADMAP-INDEX-MAINTENANCE.md`](.github/ROADMAP-INDEX-MAINTENANCE.md). Refresh it on the quarter boundary and after any roadmap or repository lifecycle campaign; see that file for cadence and ownership.
+
 tunaos#1295 and tunaos#1361 both found the same problem from different
 angles: nobody — human or agent — could see at a glance which repos in the
 org actually have a per-repo roadmap, so the canonical `tunaos/ROADMAP.md`
