@@ -73,6 +73,21 @@ baseline called for by
   .github/workflows`. The script and a ready-to-run workflow ship there and are
   copied in.
 
+## Workflow file changes
+
+Changes to `.github/workflows/*.yml` cannot be submitted via pull request due to
+GitHub App permission limitations. If you need to change a workflow:
+
+1. Open an issue describing the change and why it's needed
+2. Provide the exact replacement text in the issue
+3. A maintainer will apply the change manually
+
+This matters more here than in a product repo: workflows with `on: workflow_call`
+and the actions under `.github/actions/*` are used by every other org repository,
+and those callers pin `@main`, so a merge goes live everywhere at once. There is
+no way to hold a consumer back from a merge or roll it back except another commit.
+See [`AGENTS.md`](AGENTS.md) for the technical details.
+
 ## Getting help
 
 - Ask in the relevant issue or PR.
