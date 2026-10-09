@@ -19,6 +19,11 @@ another commit. `publish-flatpak.yml`'s inputs and each action's `inputs:`
 block are a public API: renaming one, or changing what a default means, breaks
 callers silently at their next run.
 
+[`.github/WORKFLOWS.md`](.github/WORKFLOWS.md) indexes every reusable workflow in this
+repo — what each does, when to use it, and its inputs/outputs — so a repo adopting one
+via `uses: tuna-os/.github/.github/workflows/<name>.yml@main` knows exactly what it is
+pulling in.
+
 ## Don't put an input back into a script body
 
 `update-flatpak-index/action.yml` routes every input through `env:` rather

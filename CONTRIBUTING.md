@@ -27,6 +27,8 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 4. **Sign your commits** — every commit must be DCO-signed-off
    (`git commit -s`). This certifies you wrote the change and can license it.
 
+Most repos adopt org-wide reusable workflows from [`tuna-os/.github`](https://github.com/tuna-os/.github) with `uses: tuna-os/.github/.github/workflows/<name>.yml@main`. See [`.github/WORKFLOWS.md`](.github/WORKFLOWS.md) for the catalog and how to wire each one in.
+
 ## PR checklist
 
 - [ ] Commit messages are signed off (`git commit -s`)
