@@ -67,6 +67,19 @@ is a second definition the org's check does not recognise. Migrating a repo
 onto the composite action is the fix that removes the copy rather than
 watching it.
 
+## CI Contract (green criteria)
+
+`reusable-ci-contract.yml` is a `workflow_call` workflow that checks every repo's
+`.github/green-criteria.yml` against the real workflows that assert it — each
+criterion must name a reachable workflow with a real job and step, and that
+workflow must still be fresh (`freshness_sla_days`). The adopter-facing guide —
+what the CI Contract is, how to author `green-criteria.yml`, how to wire the
+reusable workflow in, and how to read its violations — lives in
+[Green Criteria / CI Contract](.github/GREEN-CRITERIA.md). No repo carries a
+`green-criteria.yml` yet, so the contract is a no-op everywhere; a repo adopts
+it by adding that file plus a thin
+`uses: tuna-os/.github/.github/workflows/reusable-ci-contract.yml@main` job.
+
 ## Default branches are not all `main`
 
 `ROADMAP-INDEX.md` is the org-wide inventory, and it exists because the
