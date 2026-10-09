@@ -29,7 +29,7 @@ release just silently doesn't show up.
 Replace the whole clone → update-index.py → commit → push block with:
 
 ```yaml
-- uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
+- uses: tuna-os/.github/.github/actions/publish-flatpak-index@60958d8b0dcb2a5d6efa2bac3d135ede018f4e4b # main
   with:
     oci-dir: oci/mandelbrot-oci-x86_64
     repo-name: tuna-os/mandelbrot

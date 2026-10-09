@@ -18,7 +18,7 @@ jobs:
   validate:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Run the local-equivalent checks
         run: |
           # Install the project toolchain and just before enabling this template.
@@ -31,7 +31,7 @@ jobs:
   renovate-policy:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Check Renovate automerge policy
         run: python3 scripts/check-renovate-automerge-policy.py renovate.json
 
@@ -41,7 +41,7 @@ jobs:
   workflow-permissions:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Check workflow permissions
         run: python3 scripts/check-workflow-permissions.py .github/workflows
 
