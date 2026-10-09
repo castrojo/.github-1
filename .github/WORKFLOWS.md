@@ -14,15 +14,15 @@ call it, and records its inputs and outputs.
 
 | Workflow file | One line | Use when… | Hive practice |
 |---|---|---|---|
-| [`reusable-ci-contract.yml`](.github/workflows/reusable-ci-contract.yml) | Verifies every green criterion in `.github/green-criteria.yml` is asserted by a reachable workflow. | You want a machine-checkable contract that the CI gates you promised actually run. | [#1](https://github.com/tuna-os/.github/issues/2260) (epic [#2250](https://github.com/tuna-os/.github/issues/2250)) |
-| [`reusable-lint.yml`](.github/workflows/reusable-lint.yml) | Matrix of static-analysis checks: shellcheck, yamllint, json-validate, actionlint, justfmt. | You need cross-language lint gates (shell, YAML/JSON, Actions, Justfiles). | [#14](https://github.com/tuna-os/.github/issues/2260) |
-| [`ste-lint.yml`](.github/workflows/ste-lint.yml) | Simplified Technical English prose check for docs. | You have README / CONTRIBUTING / guide prose that must stay readable and unambiguous. | [#2250](https://github.com/tuna-os/.github/issues/2250) (built in `tuna-os/docs`) |
-| [`reusable-fork-safety.yml`](.github/workflows/reusable-fork-safety.yml) | Verifies `pull_request` workflows survive fork execution (permissions, `pull_request_target`, secret/write guarding). | Your CI runs privileged resources (QEMU, KVM) or touches secrets and must be safe on untrusted fork code. | [#13](https://github.com/tuna-os/.github/issues/2260) |
-| [`reusable-scorecard.yml`](.github/workflows/reusable-scorecard.yml) | OpenSSF Scorecard supply-chain security analysis → SARIF → code scanning. | You want SLSA / supply-chain security posture tracked and shown in code scanning. | [#10](https://github.com/tuna-os/.github/issues/2260) |
+| [`reusable-ci-contract.yml`](.github/workflows/reusable-ci-contract.yml) | Verifies every green criterion in `.github/green-criteria.yml` is asserted by a reachable workflow. | You want a machine-checkable contract that the CI gates you promised actually run. | #1 (epic #2250, issue #2260) |
+| [`reusable-lint.yml`](.github/workflows/reusable-lint.yml) | Matrix of static-analysis checks: shellcheck, yamllint, json-validate, actionlint, justfmt. | You need cross-language lint gates (shell, YAML/JSON, Actions, Justfiles). | #14 (epic #2250, issue #2260) |
+| [`ste-lint.yml`](.github/workflows/ste-lint.yml) | Simplified Technical English prose check for docs. | You have README / CONTRIBUTING / guide prose that must stay readable and unambiguous. | — |
+| [`reusable-fork-safety.yml`](.github/workflows/reusable-fork-safety.yml) | Verifies `pull_request` workflows survive fork execution (permissions, `pull_request_target`, secret/write guarding). | Your CI runs privileged resources (QEMU, KVM) or touches secrets and must be safe on untrusted fork code. | #13 (epic #2250, issue #2260) |
+| [`reusable-scorecard.yml`](.github/workflows/reusable-scorecard.yml) | OpenSSF Scorecard supply-chain security analysis → SARIF → code scanning. | You want SLSA / supply-chain security posture tracked and shown in code scanning. | #10 (epic #2250, issue #2260) |
 | [`reusable-lint.yml`](.github/workflows/reusable-lint.yml) + [`ste-lint.yml`](.github/workflows/ste-lint.yml) | (combo) Lint + STE prose. | Documentation-heavy repo that needs both syntax and prose gates. | — |
-| [`reusable-first-contributor.yml`](.github/workflows/reusable-first-contributor.yml) | Greets first-time contributors on issues and PRs. | You want to reduce friction for new contributors. | [#2250](https://github.com/tuna-os/.github/issues/2250) |
-| [`reusable-pr-nudges.yml`](.github/workflows/reusable-pr-nudges.yml) | Advisory reminders for stalled PRs, derived from the files they touch. Never fails a PR. | You want to keep review momentum without pinging with a hard gate. | [#11](https://github.com/tuna-os/.github/issues/2260) |
-| [`reusable-add-help-wanted.yml`](.github/workflows/reusable-add-help-wanted.yml) | Adds a `help wanted` label to unassigned issues carrying `help wanted` / `good first issue`. | You want unassigned help-wanted issues to be easy to find. | [#2250](https://github.com/tuna-os/.github/issues/2250) |
+| [`reusable-first-contributor.yml`](.github/workflows/reusable-first-contributor.yml) | Greets first-time contributors on issues and PRs. | You want to reduce friction for new contributors. | (epic #2250, issue #2260) |
+| [`reusable-pr-nudges.yml`](.github/workflows/reusable-pr-nudges.yml) | Advisory reminders for stalled PRs, derived from the files they touch. Never fails a PR. | You want to keep review momentum without pinging with a hard gate. | #11 (epic #2250, issue #2260) |
+| [`reusable-add-help-wanted.yml`](.github/workflows/reusable-add-help-wanted.yml) | Adds a `help wanted` label to unassigned issues carrying `help wanted` / `good first issue`. | You want unassigned help-wanted issues to be easy to find. | (epic #2250, issue #2260) |
 
 The first seven rows are the core engineering gates; the last four are community and
 engagement. Most repos only need the CI contract, lint, and (for docs) STE.
@@ -203,5 +203,5 @@ workflow that leaks them.
   model for editing any file under `.github/`.
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — how to contribute to TunaOS and where these
   gates fit in a workflow.
-- Epic [#2250](https://github.com/tuna-os/.github/issues/2250), issue [#2260](https://github.com/tuna-os/.github/issues/2260) — the Hive practices each workflow adopts.
+- Epic #2250, issue #2260 — the Hive practices each workflow adopts.
 - Issue [#140](https://github.com/tuna-os/.github/issues/140) — the request that produced this index.
