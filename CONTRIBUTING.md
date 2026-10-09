@@ -27,6 +27,14 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 4. **Sign your commits** — every commit must be DCO-signed-off
    (`git commit -s`). This certifies you wrote the change and can license it.
 
+## Reusable actions
+
+This repo hosts the composite actions and reusable workflows that every other
+tunaOS repository `uses:`. A merge here goes live for all of them at
+once, because callers pin `@main` — see [`AGENTS.md`](AGENTS.md) for the
+full blast radius. An index of each action, with what it does and how to
+call it, lives in [`.github/ACTIONS.md`](.github/ACTIONS.md).
+
 ## PR checklist
 
 - [ ] Commit messages are signed off (`git commit -s`)
