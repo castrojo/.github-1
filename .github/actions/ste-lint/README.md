@@ -8,7 +8,7 @@ Most repos should call the reusable workflow rather than this action directly:
 ```yaml
 jobs:
   ste:
-    uses: tuna-os/.github/.github/workflows/ste-lint.yml@main
+    uses: tuna-os/.github/.github/workflows/ste-lint.yml@60958d8b0dcb2a5d6efa2bac3d135ede018f4e4b # pinned to repo SHA, not @main (issue #168)
 ```
 
 ## What it checks
