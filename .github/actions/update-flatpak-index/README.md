@@ -53,3 +53,13 @@ repo's committed copy diverges from canonical) is implemented in
 updated for the migrations above; see the tracking issue for the exact
 correction needed (it's a `.github/workflows/**` edit, so it can only ship
 via that issue, not a PR from this agent).
+
+## Security
+
+This action is the reference for
+[`.github/ACTION-SECURITY.md`](../../ACTION-SECURITY.md): every input travels
+through `env:`, never through `${{ }}` interpolation into the script body, and
+the multi-tag `tags` input is split with `read -ra` and validated against the
+OCI tag grammar before it reaches `update-index.py`. That is what stops a
+caller from passing shell as a tag. See the guide for the exploit this
+prevents and when to apply the same pattern.

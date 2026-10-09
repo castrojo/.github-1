@@ -69,3 +69,11 @@ For agents: `ste-lint.mjs --changed-only --base origin/main --format json`
 prints one object per new finding (`file`, `line`, `rule`, `message`,
 `sentence`) on stdout, with human context on stderr. Parse that instead of
 scraping the log.
+
+## Security
+
+The inputs this action expands into shell commands (`budget-file`, `budget`,
+`base-ref`, `annotations`) all travel through `env:`; the one `with:` input,
+`node-version`, is a number the action consumes natively, not a shell
+argument. See [`.github/ACTION-SECURITY.md`](../../ACTION-SECURITY.md) for the
+rule behind the `with:` vs `env:` split.

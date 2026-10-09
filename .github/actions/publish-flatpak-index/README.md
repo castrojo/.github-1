@@ -57,3 +57,11 @@ dualcut, gtk-office-suite (letters/tables/decks). Installer repos
 (tuna-installer-{cosmic,kde,niri,xfce}, bootc-installer) still carry their
 own copy of the old clone/push block — same follow-up scope #1183 already
 called out for `update-index.py` itself.
+
+## Security
+
+The `token` input (`FLATPAK_INDEX_TOKEN`) is routed through `env:`, not
+interpolated, and authenticated with a header written over stdin so the secret
+never lands in `git remote -v`, `.git/config`, or a process listing. See
+[`.github/ACTION-SECURITY.md`](../../ACTION-SECURITY.md) for the general
+pattern and the input-injection this avoids.

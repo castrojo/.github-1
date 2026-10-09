@@ -36,6 +36,9 @@ multi-tag case actually needs. No caller was exploitable — the only one passes
 a literal `latest` — but this action is the migration target for eight repos
 whose jobs hold `packages: write` and `FLATPAK_INDEX_TOKEN`.
 
+- Full write-up of this pattern, the exploit, and when to apply it:
+  [`.github/ACTION-SECURITY.md`](.github/ACTION-SECURITY.md).
+
 ## The drift check, and what it does not cover
 
 `flatpak-tooling-drift-check.yml` is an interim guard for
