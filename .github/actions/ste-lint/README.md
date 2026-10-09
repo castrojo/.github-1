@@ -8,7 +8,7 @@ Most repos should call the reusable workflow rather than this action directly:
 ```yaml
 jobs:
   ste:
-    uses: tuna-os/.github/.github/workflows/ste-lint.yml@main
+    uses: tuna-os/.github/.github/workflows/ste-lint.yml@3c51a447f9852d1dbb67ec5aba00a5512bfba2dc # ste-lint
 ```
 
 ## What it checks

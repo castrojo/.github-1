@@ -10,7 +10,7 @@ Replace a repo's local `python3 .github/scripts/update-index.py ...` call
 with:
 
 ```yaml
-- uses: tuna-os/.github/.github/actions/update-flatpak-index@main
+- uses: tuna-os/.github/.github/actions/update-flatpak-index@3c51a447f9852d1dbb67ec5aba00a5512bfba2dc # update-flatpak-index
   with:
     oci-dir: oci/mandelbrot-oci-x86_64
     index-file: index-repo/static/flatpak/index/static
