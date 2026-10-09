@@ -37,6 +37,9 @@ indirectly through the reusable
 (recommendation #2). Direct callers of *this* action are what remains
 duplicated, not `update-index.py` itself.
 
+A step-by-step migration guide for those direct callers lives in
+[MIGRATE-TO-UPDATE-FLATPAK-INDEX.md](../../MIGRATE-TO-UPDATE-FLATPAK-INDEX.md).
+
 Confirmed migrated off the local `.github/scripts/update-index.py` copy
 (verified by cloning each repo's default branch — no file at that path in
 any of them): `Tavern`, `dualcut`, `mandelbrot`, `gtk-office-suite`. Not

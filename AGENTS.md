@@ -67,6 +67,12 @@ is a second definition the org's check does not recognise. Migrating a repo
 onto the composite action is the fix that removes the copy rather than
 watching it.
 
+A step-by-step playbook for those repos — the pre-flight drift check, the three
+migration targets (the direct `update-flatpak-index` action, the
+`publish-flatpak-index` wrapper, the reusable `publish-flatpak.yml` workflow),
+offline testing, and rollback — is in
+[`MIGRATE-TO-UPDATE-FLATPAK-INDEX.md`](MIGRATE-TO-UPDATE-FLATPAK-INDEX.md).
+
 ## Default branches are not all `main`
 
 `ROADMAP-INDEX.md` is the org-wide inventory, and it exists because the
