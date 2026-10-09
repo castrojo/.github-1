@@ -8,9 +8,45 @@ Enable the CI template only after replacing the checkout action version with the
 
 ## Dependency updates
 
-The organisation baseline automerges **only** `patch`/`pin`/`pinDigest`/`digest` Renovate updates, after branch protection passes — `major` and `minor` updates always need human review before merge (tuna-os/.github#12). Do not widen `renovate.json`'s automerge `matchUpdateTypes` to include `major`/`minor`, and do not set top-level `automerge`/`platformAutomerge` to `true` — that reintroduces exactly the org-gate bypass tracked in tuna-os/tunaOS#1612. The tuned OS configuration adds custom managers for image digests and pinned workflow SHAs. Copy those custom managers only when those file formats exist. For an upstream that moves several times a day, use `minimumReleaseAge` to coalesce updates.
+The organisation baseline automerges `minor`/`patch`/`pin`/`pinDigest`/`digest` Renovate updates, after branch protection passes — `major` updates always need human review before merge (tuna-os/.github#12). Do not widen `renovate.json`'s automerge `matchUpdateTypes` to include `major`, and do not set top-level `automerge`/`platformAutomerge` to `true` — that reintroduces exactly the org-gate bypass tracked in tuna-os/tunaOS#1612. The tuned OS configuration adds custom managers for image digests and pinned workflow SHAs. Copy those custom managers only when those file formats exist. For an upstream that moves several times a day, use `minimumReleaseAge` to coalesce updates.
 
-Validate any hand-edited `renovate.json` with `npx -p renovate renovate-config-validator` before committing — a syntactically invalid config (e.g. a stray `"ignore": true` key, which isn't valid Renovate schema) silently halts *all* Renovate PRs for the repo, not just the one broken rule. That only catches schema errors, not policy violations: a config can be perfectly valid JSON and still automerge major/minor (that's exactly how tunaOS#1612 happened). `ci.yml`'s `renovate-policy` job runs `scripts/check-renovate-automerge-policy.py` against `renovate.json` on every push and PR, resolving the same rule-layering Renovate itself does (top-level `automerge`, overridden in order by each `packageRule`) and failing the build if any path leaves `major`/`minor` automerging — keep that job in `required-checks`' `needs` list.
+Validate any hand-edited `renovate.json` with `npx -p renovate renovate-config-validator` before committing — a syntactically invalid config (e.g. a stray `"ignore": true` key, which isn't valid Renovate schema) silently halts *all* Renovate PRs for the repo, not just the one broken rule. That only catches schema errors, not policy violations: a config can be perfectly valid JSON and still automerge major (that's exactly how tunaOS#1612 happened). `ci.yml`'s `renovate-policy` job runs `scripts/check-renovate-automerge-policy.py` against `renovate.json` on every push and PR, resolving the same rule-layering Renovate itself does (top-level `automerge`, overridden in order by each `packageRule`) and failing the build if any path leaves `major` automerging — keep that job in `required-checks`' `needs` list.
+
+### Validating the policy locally
+
+Schema validation and policy validation are complementary, not interchangeable. `npx -p renovate renovate-config-validator` (above) rejects a *syntactically invalid* config; `scripts/check-renovate-automerge-policy.py` rejects a *valid* config that still automerges a `major` update — the class that passed the schema validator in tunaOS#1612. Run the checker locally before you commit, the same way CI runs it on every push and PR:
+
+```bash
+python3 scripts/check-renovate-automerge-policy.py renovate.json
+```
+
+It exits 0 when compliant and 1 when it finds a rule that automerges `major`, printing the offending rule and the policy it breaks (`tuna-os/.github#12`). When it fails, read the printed rule: the fix is to stop an `automerge: true` path from reaching `major`, either by removing the broad `automerge: true` (top-level, or a `packageRule` with no `matchUpdateTypes`, which applies to every update type) or by adding an explicit `{"matchUpdateTypes": ["major"], "automerge": false}`. Do the `renovate-config-validator` pass first if you haven't — a config that fails schema validation halts *all* Renovate PRs, and you won't get a clean policy answer until it is fixed.
+
+The check resolves `renovate.json` the way Renovate does: top-level `automerge` is the default, then each `packageRule` is applied in order with later rules winning. That ordering is what trips people up, because a rule that looks like it closes the gap can still leave `major` automerging, and `automerge` can be *reintroduced* at a lower level even when the top level disables it. An example that looks valid but violates the policy:
+
+```json
+{
+  "automerge": false,
+  "packageRules": [
+    { "matchUpdateTypes": ["major"], "automerge": true }
+  ]
+}
+```
+
+Top-level `automerge: false` says no, but the later rule re-enables it for `major`, and the checker reports it. The mirror-image trap is a *scoped* rule that only covers one package:
+
+```json
+{
+  "automerge": true,
+  "packageRules": [
+    { "matchPackageNames": ["left-pad"], "matchUpdateTypes": ["major"], "automerge": false }
+  ]
+}
+```
+
+That disables `major` for `left-pad` only; the top-level `automerge: true` still automerges `major` for every other package, and a scoped rule can never cancel that broader path. The checker treats any rule that scopes by package, datasource, or manager as unable to clear a broader violation (the `SCOPING_KEYS` block in `scripts/check-renovate-automerge-policy.py`), so a narrow override is never mistaken for a closed gap.
+
+`ci.yml`'s `renovate-policy` job runs this same script on every push and PR — the same rule-layering resolution described above, wired into `required-checks`' `needs` list — so the layering traps just shown are exactly what it catches: a config that looks valid locally and violates policy cannot merge. Run the local check first so you hit those failures cheaply, on your own machine, before the gate does.
 
 ## Flatpak remote
 
