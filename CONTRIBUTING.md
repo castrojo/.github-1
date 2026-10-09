@@ -50,6 +50,29 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 - **Agents file `[architect]`/`[sec-check]`/`[strategist]` issues.** These are
   structural findings — treat them as prioritized backlog, not noise.
 
+## CI/CD security
+
+Every workflow in a tunaOS repository must declare an explicit top-level
+`permissions:` block, following the principle of least privilege:
+
+```yaml
+permissions:
+  contents: read
+```
+
+A workflow with no block inherits the repository's configured default token
+scope, which is almost always broader than the jobs actually need. This is the
+baseline called for by
+[tuna-os/.github#155](https://github.com/tuna-os/.github/issues/155).
+
+- **New repos** inherit it for free: `project-starter/` ships a `ci.yml` with
+  the block and a `workflow-permissions` job that runs the check.
+- **Existing repos** should adopt it with the shared tooling from
+  `tuna-os/.github`: copy `workflow-templates/ci.yml` (a compliant starting
+  point) and run the check — `python3 scripts/check-workflow-permissions.py
+  .github/workflows`. The script and a ready-to-run workflow ship there and are
+  copied in.
+
 ## Getting help
 
 - Ask in the relevant issue or PR.

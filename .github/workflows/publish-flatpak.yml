@@ -93,6 +93,12 @@ on:
       FLATPAK_INDEX_TOKEN:
         required: true
 
+permissions:
+  # contents: write covers checkout and `gh release upload` (release assets);
+  # packages: write covers pushing the OCI images to GHCR and the index push.
+  contents: write
+  packages: write
+
 jobs:
   build-oci:
     name: Build OCI (${{ matrix.arch }})

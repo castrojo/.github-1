@@ -1,0 +1,45 @@
+# Copy this file into <repo>/.github/workflows/ci.yml as the starting point for
+# a tunaOS repository's CI. Everything below the `on:` trigger is optional --
+# the one thing that is NOT optional is the top-level `permissions:` block.
+#
+# A missing permissions block makes the workflow inherit the repository's
+# configured default token scope, which is almost always broader than the jobs
+# actually need. Declaring it here, at the top of the file, pins the default
+# explicitly and follows least privilege. This is the baseline called for by
+# tuna-os/.github#155 and enforced by scripts/check-workflow-permissions.py.
+#
+# Start from what each job does and ask only for that:
+#   contents: read         -> check out code, read the repository
+#   contents: write        -> push commits, create releases, upload release assets
+#   packages: write        -> push container images to GHCR / update the flatpak index
+#   pull-requests: write   -> open or edit pull requests (bot steps)
+#   issues: write          -> open or edit issues (bot steps)
+#
+# A workflow that only checks out and builds needs just `contents: read`.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and test
+        run: |
+          # Install your project's toolchain here, then run:
+          #   just build && just test
+          echo "replace with your build and test commands"

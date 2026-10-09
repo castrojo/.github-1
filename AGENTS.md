@@ -91,6 +91,18 @@ automerge major and minor updates once `packageRules` are layered
 `project-starter/scripts/check-renovate-automerge-policy.py` are byte-identical
 copies today, with nothing enforcing that.
 
+## Workflow permissions check
+
+```bash
+python3 scripts/check-workflow-permissions.py .github/workflows
+```
+
+`workflow-permissions-check.yml` enforces [tuna-os/.github#155](https://github.com/tuna-os/.github/issues/155): every workflow must declare a top-level `permissions:` block. A workflow with none inherits the repository's configured default token scope, which is almost always broader than the jobs actually need. The check is dependency-free — it parses only top-level mapping keys and their indentation, so it runs on the ubuntu runner without a `pip install`.
+
+`scripts/check-workflow-permissions.py` and `project-starter/scripts/check-workflow-permissions.py` are byte-identical copies today; copy the script into any repo that ships its own copy, the way the renovate check does.
+
+`publish-flatpak.yml` and `ste-lint.yml` were the two workflows that lacked the block; `publish-flatpak.yml` takes `contents: write` (checkout + `gh release upload`) and `packages: write` (GHCR push + index update), `ste-lint.yml` takes `contents: read`.
+
 ## `.claude/skills/hive-contribute/`
 
 A skill that works the hive's ready-work queue **without registering a relay**,

@@ -19,6 +19,7 @@ A curated, copyable baseline for TunaOS projects. It distils the practices that 
 | `Justfile` | One discoverable local command surface | tunaOS, bootc-migrate, wootc |
 | `renovate.json` | Automated dependency, action, digest, and pin updates | organisation default, tunaOS |
 | `ci.yml` | Least-privilege checks, cancellation, and a branch-protection sentinel | bootc-migrate |
+| `scripts/check-workflow-permissions.py` | CI gate: fails the build if any workflow omits a top-level `permissions:` block, so jobs inherit the least-privilege scope (tuna-os/.github#155) | tuna-os/.github#155 |
 | `scripts/check-renovate-automerge-policy.py` | CI gate: fails the build if `renovate.json` would automerge a major/minor update, even via rule layering (tuna-os/.github#12) | tuna-os/.github#1636 |
 | `flatpak-remote.yml` | Build an OCI Flatpak and update a hosted remote index | tuna-os/docs |
 | `docs-artifacts.yml` | Turn validated screenshots or walkthroughs into versioned docs | tunaOS → docs |
