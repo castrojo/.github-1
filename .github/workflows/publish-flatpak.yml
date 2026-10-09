@@ -231,7 +231,7 @@ jobs:
       # clone/retry/push cycle, same as before consolidation.
       - name: Update central index — x86_64
         if: contains(fromJSON(inputs.archs), 'x86_64')
-        uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
+        uses: tuna-os/.github/.github/actions/publish-flatpak-index@3c51a447f9852d1dbb67ec5aba00a5512bfba2dc # main as of 2026-10-09
         with:
           oci-dir: oci-x86_64
           repo-name: ${{ inputs.repo-name }}
@@ -241,7 +241,7 @@ jobs:
 
       - name: Update central index — aarch64
         if: contains(fromJSON(inputs.archs), 'aarch64')
-        uses: tuna-os/.github/.github/actions/publish-flatpak-index@main
+        uses: tuna-os/.github/.github/actions/publish-flatpak-index@3c51a447f9852d1dbb67ec5aba00a5512bfba2dc # main as of 2026-10-09
         with:
           oci-dir: oci-aarch64
           repo-name: ${{ inputs.repo-name }}
