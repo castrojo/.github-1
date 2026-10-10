@@ -24,6 +24,13 @@ A curated, copyable baseline for TunaOS projects. It distils the practices that 
 | `flatpak-remote.yml` | Build an OCI Flatpak and update a hosted remote index | tuna-os/docs |
 | `docs-artifacts.yml` | Turn validated screenshots or walkthroughs into versioned docs | tunaOS → docs |
 
+ Both `scripts/check-*.py` gates are byte-identical copies of the canonical
+ scripts in [`tuna-os/.github/scripts/`](https://github.com/tuna-os/.github/tree/main/scripts).
+ They are fixed in `tuna-os/.github/scripts/` and re-copied here, so new repos
+ start from the corrected version — see the
+ [canonical-sources section of CONTRIBUTING.md](../CONTRIBUTING.md#shared-scripts-and-their-canonical-sources)
+ for the full table and the sync process.
+
 ## Principles
 
 - Make the normal path obvious: `just check` should reproduce CI locally.

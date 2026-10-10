@@ -50,6 +50,36 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 - **Agents file `[architect]`/`[sec-check]`/`[strategist]` issues.** These are
   structural findings — treat them as prioritized backlog, not noise.
 
+## Shared scripts and their canonical sources
+
+Several utilities ship byte-identical copies across the organisation. Each has
+one canonical location where a fix must land first, plus copies regenerated
+from it.
+
+| Utility | Canonical source | Copied to | Drift enforced |
+|---|---|---|---|
+| `check-renovate-automerge-policy.py` | `tuna-os/.github/scripts/` | `project-starter/scripts/` (shipped to new repos) | No — byte-identical today, but nothing enforces it |
+| `check-workflow-permissions.py` | `tuna-os/.github/scripts/` | `project-starter/scripts/` (shipped to new repos) | No — byte-identical today, but nothing enforces it |
+| `update-index.py` | `tuna-os/flatpak-index/scripts/` | `.github/actions/update-flatpak-index/` here; `.github/scripts/` in the flatpak-publishing app repos | Yes — weekly `flatpak-tooling-drift-check.yml` |
+
+**Keeping copies in sync.** Fix `check-renovate-automerge-policy.py` and
+`check-workflow-permissions.py` in `tuna-os/.github/scripts/`, then re-copy both
+into `project-starter/scripts/` in the same commit so new repos start from the
+corrected version. There is no automated gate — verify the two blobs are
+byte-identical whenever you touch either. Fix `update-index.py` first in
+`tuna-os/flatpak-index/scripts/` (the canonical source), update the synced copy
+in `tuna-os/.github/.github/actions/update-flatpak-index/` to match, and get app
+repos off their own copies by migrating them onto the reusable
+`publish-flatpak.yml` workflow (or the `publish-flatpak-index` action) rather
+than re-copying the script; the weekly drift check flags any repo that still
+carries a divergent local copy.
+
+**Verification cadence.** `update-index.py` is checked continuously by
+`flatpak-tooling-drift-check.yml` (scheduled Mondays 06:00 UTC, and on
+`workflow_dispatch`), which opens or comments on an issue whenever a repo has
+drifted. The `check-*` scripts have no drift check today; add a byte-comparison
+ in CI if you want the project-starter copy enforced rather than trusted.
+
 ## CI/CD security
 
 Every workflow in a tunaOS repository must declare an explicit top-level
