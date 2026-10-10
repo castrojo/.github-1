@@ -1,0 +1,45 @@
+name: "CI Contract Check"
+description: >-
+  Verifies that every green-criteria criterion is asserted by a reachable
+  workflow job/step. The validator and its YAML loading live in
+  .github/scripts (ci_contract.py + workflow_introspector.py) and travel with
+  this action, so the calling repository never carries a copy that can drift.
+  This is the reusable-workflow rule: a `run:` step in a workflow_call job runs
+  against the CALLER's checkout, so the script must be reached by full path
+  (github.action_path) so GitHub checks out the hosting repo.
+
+inputs:
+  criteria-path:
+    description: Path to green-criteria.yml
+    required: false
+    type: string
+    default: ".github/green-criteria.yml"
+  workflows-dir:
+    description: Directory containing workflow YAML files
+    required: false
+    type: string
+    default: ".github/workflows"
+  python-version:
+    description: Python version to use
+    required: false
+    type: string
+    default: "3.11"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: python3 -m pip install pyyaml
+
+    - name: Verify CI contract
+      shell: bash
+      env:
+        CRITERIA_PATH: ${{ inputs.criteria-path }}
+        WORKFLOWS_DIR: ${{ inputs.workflows-dir }}
+      run: python3 ${{ github.action_path }}/../scripts/ci_contract.py

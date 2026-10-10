@@ -1,0 +1,40 @@
+name: "Fork Safety Check"
+description: >-
+  Verifies that every pull_request workflow survives execution from a fork: it
+  declares explicit permissions, avoids pull_request_target, and guards every
+  write/secret step against untrusted fork code. The validator and its YAML
+  loading live in .github/scripts (fork_safety.py + workflow_introspector.py)
+  and travel with this action, so the calling repository never carries a copy
+  that can drift. Reusable-workflow rule: a `run:` step in a workflow_call job
+  runs against the CALLER's checkout, so the script is reached by full path
+  (github.action_path) so GitHub checks out the hosting repo.
+
+inputs:
+  workflows-dir:
+    description: Directory containing workflow YAML files
+    required: false
+    type: string
+    default: ".github/workflows"
+  python-version:
+    description: Python version to use
+    required: false
+    type: string
+    default: "3.11"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: python3 -m pip install pyyaml
+
+    - name: Verify fork safety
+      shell: bash
+      env:
+        WORKFLOWS_DIR: ${{ inputs.workflows-dir }}
+      run: python3 ${{ github.action_path }}/../scripts/fork_safety.py
