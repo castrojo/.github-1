@@ -27,6 +27,111 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 4. **Sign your commits** — every commit must be DCO-signed-off
    (`git commit -s`). This certifies you wrote the change and can license it.
 
+## Working on this repository
+
+This section is for people changing `tuna-os/.github` itself — the shared
+scripts, reusable workflows, and composite actions that other repos `uses:`
+and inherit. It is not about building a tunaOS image; it is about editing the
+glue. The rest of this document is aimed at contributors to product repos.
+
+### Prerequisites
+
+| Tool | Why | Minimum |
+|---|---|---|
+| Python 3 | `scripts/check-renovate-automerge-policy.py` and its self-test run on it. CI uses `ubuntu-24.04` (Python 3.12); `ruff.toml` targets `py311`. | 3.11 |
+| bash | Composite actions run `shell: bash` with `set -euo pipefail`. | 4 (5.x on CI) |
+| Node 24 | The `ste-lint` action and its rule tests run on Node; the action pins `node-version: "24"`. | 24 |
+| `gh` CLI | Forking, reading the issue, opening the PR. | latest |
+| `actionlint`, `shellcheck`, `yamllint`, `jq` | Local lint mirrors. Optional — the shared `reusable-lint.yml` runs them in CI — but running them locally catches problems before the first CI run. | any recent |
+
+`jq` is only needed to sanity-check JSON (`jq . renovate.json`). Everything
+else runs directly.
+
+### Verify before you push
+
+The checks that matter for this repo run straight from a checkout, no build
+step:
+
+```bash
+# Policy gate: refuses a renovate.json that would automerge a major update.
+python3 scripts/check-renovate-automerge-policy.py renovate.json
+python3 scripts/check-renovate-automerge-policy.py default.json
+python3 scripts/check-renovate-automerge-policy.py project-starter/renovate.json
+
+# Boundary test for that gate: minor passes, major fails, the scoping rules
+# that stop a narrow override from cancelling a broad bypass still hold.
+python3 scripts/test-renovate-automerge-policy.py
+
+# ste-lint action rule tests. The generated-tree tests self-skip here
+# because this is not the docs aggregator.
+node .github/actions/ste-lint/ste-lint.test.mjs
+```
+
+If you touched a shell script, `shellcheck` it first:
+
+```bash
+shellcheck --severity=error --exclude=SC1091,SC2114 .github/actions/*/action.yml
+```
+
+If you touched a workflow, `actionlint` it:
+
+```bash
+actionlint .github/workflows/*.yml
+```
+
+(Install via `brew install actionlint shellcheck yamllint jq`, the Go
+`go install` paths, or the prebuilt releases. CI runs these in
+`reusable-lint.yml` regardless, so a missed local run still fails upstream —
+but the local run is what lets you iterate.)
+
+### Common tasks
+
+**Add a new reusable workflow** (a `.yml` with `on: workflow_call:`):
+
+1. Give it a clear `name:` — callers see this in their logs.
+2. Declare every input with a `type:` and a `default:` unless it must be
+   required. Inputs are a public API (see below).
+3. Declare a top-level `permissions:` block (least privilege). This repo's
+   own workflows are the reference — copy the shape from an existing one.
+4. `actionlint` it, and point a caller at your branch once to exercise it.
+   A `workflow_call` workflow never runs on its own; someone has to `uses:`
+   it before a bug is visible.
+5. If it is meant to be the shared default, add it to the repos that should
+   adopt it — there is no automatic rollout.
+
+**Modify an action's inputs** (`.github/actions/*/action.yml`):
+
+Inputs travel through `env:`, never through `${{ }}` interpolation into the
+script body — actions substitute expressions into the script *text* before
+bash parses them, so an interpolated value is parsed as shell. This is
+deliberate and load-bearing (documented in `AGENTS.md` and demonstrated
+against `update-flatpak-index`). When you change an input:
+
+- Treat every existing caller as live. Callers pin `@main`, so a merge is
+  live for them immediately and there is no rollback except another commit.
+- Renaming an input, or changing what a `default:` means, breaks callers
+  silently at their next run. Rename only with a migration PR per caller, or
+  keep the old name as a deprecated alias.
+- Test the default **and** a custom value, and a value with spaces/special
+  characters — that is the injection case the `env:` routing exists to close.
+
+**Update the shared PR template** (`PULL_REQUEST_TEMPLATE.md`):
+
+- It renders on the "Open a pull request" page in every org repo. There is no
+  local preview — the way to verify it renders is to open a test PR in any
+  repo and confirm the body matches.
+- Remember the template prose is also STE-checked (it is one of the files
+  `ste-lint` scans), so keep sentences short and active.
+
+### Blast radius
+
+Before editing anything under `.github/`, read `AGENTS.md`. A change here
+lands everywhere at once: a `workflow_call` workflow or action that callers
+pin `@main` goes live for every repo the moment it merges, with no separate
+merge in those repos and no way to roll back except another commit. That is
+why this section exists separately from the product-facing "getting started"
+above: editing this repo means editing the shared layer every repo inherits.
+
 ## PR checklist
 
 - [ ] Commit messages are signed off (`git commit -s`)
