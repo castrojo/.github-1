@@ -14,6 +14,14 @@ name: Flatpak Tooling Drift Check
 # "Missing" is never treated as "migrated" on its own: a repo that moved or
 # dropped the file without adopting the shared tooling fails the check.
 
+#
+# This is the ORG-LEVEL sweep: it reads every app repo and files an issue when
+# one has drifted. It stays schedule-only by design — repairing a drifted copy
+# would mean writing to eight other repos, which this context cannot do. That
+# per-repo job is reusable-drift-check.yml (called on each repo's own push, and
+# able to auto-repair via drift-remediate when granted contents: write). See
+# tuna-os/.github#279.
+
 on:
   schedule:
     - cron: "0 6 * * 1" # Monday 06:00 UTC

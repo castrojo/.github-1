@@ -1,0 +1,92 @@
+name: Flatpak Tooling Drift Check (reusable)
+
+# Reusable drift check for tuna-os app repositories.
+#
+# The org-level flatpak-tooling-drift-check.yml sweeps all eight flatpak-publishing
+# repos on a weekly schedule and can only file an issue — repairing a drifted
+# copy would mean writing to eight other repos, which the org sweep cannot do.
+# This workflow runs INSIDE each app repo, so it classifies the repo's OWN copy
+# of update-index.py and, when called with remediate=true, auto-repairs it with
+# the drift-remediate composite action (GITHUB_TOKEN already has contents: write
+# to this repo).
+#
+# Call it from a repo's own publish workflow:
+#
+#   on:
+#     push:
+#       branches: [main]
+#   jobs:
+#     drift:
+#       uses: tuna-os/.github/.github/workflows/reusable-drift-check.yml@main
+#       with:
+#         remediate: true
+#
+# Granting contents: write to a push workflow carries the usual risk; scope it
+# to trusted branches (branches: [main]) as shown above.
+
+on:
+  workflow_call:
+    inputs:
+      remediate:
+        description: >-
+          Auto-repair a drifted copy from canonical instead of only reporting it.
+          Requires contents: write in the calling workflow.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  classify-drift:
+    name: Classify flatpak index tooling
+    runs-on: ubuntu-latest
+    outputs:
+      drifted: ${{ steps.classify.outputs.drifted }}
+    steps:
+      - name: Classify this repo's update-index.py copy
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REMEDIATE: ${{ inputs.remediate }}
+          SCRIPT_PATH: .github/scripts/update-index.py
+        run: |
+          set -euo pipefail
+
+          canonical_sha=$(gh api "repos/tuna-os/flatpak-index/contents/scripts/update-index.py" --jq '.sha' 2>/dev/null) \
+            || { echo "::error::could not read tuna-os/flatpak-index/scripts/update-index.py (canonical source moved or unreachable)"; exit 1; }
+          echo "Canonical sha (tuna-os/flatpak-index): ${canonical_sha}"
+
+          # "Migrated": no local copy and the repo's publish workflow uses the
+          # shared publish-flatpak tooling.
+          uses_shared_tooling() {
+            gh api "repos/${GITHUB_REPOSITORY}/contents/.github/workflows" --jq '.[] | select(.type == "file") | .path' 2>/dev/null \
+              | xargs -r -I{} gh api "repos/${GITHUB_REPOSITORY}/contents/{}" -H "Accept: application/vnd.github.raw" 2>/dev/null \
+              | grep -Eq "tuna-os/\.github/\.github/(workflows/publish-flatpak\.yml|actions/(publish|update)-flatpak-index)@"
+          }
+
+          if [[ -f "${SCRIPT_PATH}" ]]; then
+            local_sha=$(git hash-object "${SCRIPT_PATH}")
+            if [[ "${local_sha}" == "${canonical_sha}" ]]; then
+              echo "In sync — local copy matches canonical (not yet migrated)."
+              echo "drifted=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "::error::${SCRIPT_PATH} has drifted (sha ${local_sha} != canonical ${canonical_sha})"
+              echo "drifted=true" >> "$GITHUB_OUTPUT"
+            fi
+          elif uses_shared_tooling; then
+            echo "Migrated — no local copy, uses the shared publish-flatpak tooling."
+            echo "drifted=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::no ${SCRIPT_PATH} and no workflow uses the shared publish-flatpak tooling (unwired-or-moved)"
+            echo "drifted=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Remediate drifted copy
+        if: ${{ inputs.remediate == true && steps.classify.outputs.drifted == 'true' }}
+        uses: tuna-os/.github/.github/actions/drift-remediate@main
+        with:
+          script-path: .github/scripts/update-index.py
+          remediate-missing: false
+

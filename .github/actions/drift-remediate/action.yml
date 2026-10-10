@@ -1,0 +1,94 @@
+name: "Drift Remediate"
+description: >-
+  Repair a drifted update-index.py copy in the calling repo. Runs inside the
+  affected repo's own workflow context, so GITHUB_TOKEN already has contents:
+  write to this repo — no cross-repo token and no maintainer decision are
+  needed to auto-repair. (The org-level sweep in tuna-os/.github cannot do this:
+  it would have to write to eight other repos.)
+author: tuna-os
+
+inputs:
+  script-path:
+    description: Path to the repo's own update-index.py copy
+    required: false
+    default: .github/scripts/update-index.py
+  canonical-repo:
+    description: Repo that owns the canonical update-index.py
+    required: false
+    default: tuna-os/flatpak-index
+  canonical-path:
+    description: Path to the canonical update-index.py inside the canonical repo
+    required: false
+    default: scripts/update-index.py
+  remediate-missing:
+    description: >-
+      Create the copy when it is missing (unwired). When false a missing copy
+      is reported but never created.
+    required: false
+    default: "false"
+  branch:
+    description: Branch to remediate in place
+    required: false
+    default: ${{ github.ref_name }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: true
+
+    - name: Remediate drifted update-index.py copy
+      shell: bash
+      env:
+        SCRIPT_PATH: ${{ inputs.script-path }}
+        CANONICAL_REPO: ${{ inputs.canonical-repo }}
+        CANONICAL_PATH: ${{ inputs.canonical-path }}
+        REMEDIATE_MISSING: ${{ inputs.remediate-missing }}
+        BRANCH: ${{ inputs.branch }}
+        ACTOR: ${{ github.actor }}
+      run: |
+        set -euo pipefail
+
+        canonical_sha=$(gh api "repos/${CANONICAL_REPO}/contents/${CANONICAL_PATH}" --jq '.sha' 2>/dev/null) \
+          || { echo "::error::could not read ${CANONICAL_REPO}/${CANONICAL_PATH} (canonical source moved or unreachable)"; exit 1; }
+        echo "Canonical sha (${CANONICAL_REPO}/${CANONICAL_PATH}): ${canonical_sha}"
+
+        if [[ -f "${SCRIPT_PATH}" ]]; then
+          local_sha=$(git hash-object "${SCRIPT_PATH}")
+          echo "Local sha (${SCRIPT_PATH}): ${local_sha}"
+          if [[ "${local_sha}" == "${canonical_sha}" ]]; then
+            echo "In sync — nothing to do."
+            exit 0
+          fi
+          echo "Drifted — updating from canonical."
+        elif [[ "${REMEDIATE_MISSING}" == "true" ]]; then
+          echo "Missing — creating from canonical."
+        else
+          echo "Missing and remediate-missing=false — reporting only."
+          exit 0
+        fi
+
+        gh api "repos/${CANONICAL_REPO}/contents/${CANONICAL_PATH}" \
+          -H "Accept: application/vnd.github.raw" 2>/dev/null > "${SCRIPT_PATH}"
+
+        git add "${SCRIPT_PATH}"
+        if ! git -c user.name="${ACTOR:-hive-bot}" \
+              -c user.email="${ACTOR:-hive-bot}@users.noreply.github.com" \
+              commit -m "chore: sync update-index.py to canonical"; then
+          echo "Nothing to commit."
+          exit 0
+        fi
+
+        if git push "origin" "${BRANCH}" 2>/dev/null; then
+          echo "Pushed remediation to ${BRANCH}."
+        else
+          echo "Direct push refused — opening a PR instead."
+          rem_branch="drift-remediation/$(date +%Y%m%d%H%M%S)"
+          git push "origin" "${BRANCH}:${rem_branch}"
+          gh pr create --repo "${GITHUB_REPOSITORY}" \
+            --title "chore: sync update-index.py to canonical" \
+            --body "Auto-repaired \`update-index.py\` to match the canonical \`${CANONICAL_REPO}/${CANONICAL_PATH}\`." \
+            --head "${rem_branch}" --base "${BRANCH}"
+        fi
