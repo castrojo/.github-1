@@ -12,7 +12,7 @@ on:
         description: JSON array of checks to run
         required: false
         type: string
-        default: '["shellcheck", "yamllint", "json-validate", "actionlint", "justfmt"]'
+        default: '["shellcheck", "yamllint", "json-validate", "action-pin-check", "actionlint", "justfmt"]'
 
 permissions:
   contents: read
@@ -76,6 +76,53 @@ jobs:
         run: |
           echo "==> Running actionlint on workflows..."
           actionlint .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true
+
+      - name: Check action pins to commit SHAs
+        if: matrix.check == 'action-pin-check'
+        run: |
+          echo "==> Checking every external action is pinned to a commit SHA..."
+          python3 - <<'PYEOF'
+          import pathlib, re, sys
+          # Supply-chain gate (tuna-os/.github#175): external `uses:` refs must be
+          # a 40-char commit SHA, never a version tag or branch ref. This is the
+          # same rule as scripts/check-action-pins.py (the tested canonical
+          # implementation); it is embedded here so it travels with the reusable
+          # workflow and runs in any caller's lint job with no extra checkout.
+          SHA = re.compile(r"^[0-9a-fA-F]{40}$")
+          USES = re.compile(r"^\s*(?:-\s+)?uses:\s*(?P<v>.+?)\s*$")
+
+          def clean(raw):
+              v = raw.split("#", 1)[0].strip().strip('"').strip("'").strip()
+              return v if v and not v.startswith("${{") else ""
+
+          wd = pathlib.Path(".github/workflows")
+          files = sorted((f for f in wd.rglob("*") if f.suffix in (".yml", ".yaml"))) if wd.is_dir() else []
+          violations = []
+          for f in files:
+              text = f.read_text(encoding="utf-8")
+              for i, line in enumerate(text.splitlines(), 1):
+                  if line.lstrip().startswith("#"):
+                      continue
+                  m = USES.match(line)
+                  if not m:
+                      continue
+                  val = clean(m.group("v"))
+                  if not val or val.startswith("."):
+                      continue
+                  if "@" not in val:
+                      violations.append(f"{f}:{i}: {val!r} has no @ref")
+                      continue
+                  ref = val.rpartition("@")[2]
+                  if not SHA.match(ref):
+                      violations.append(f"{f}:{i}: {val!r} pinned to {ref!r}, not a 40-char commit SHA")
+
+          if violations:
+              print(f"FAIL: {len(violations)} unpinned action reference(s):", file=sys.stderr)
+              for v in violations:
+                  print(f"  - {v}", file=sys.stderr)
+              sys.exit(1)
+          print("OK: all external action references are pinned to 40-char commit SHAs.")
+          PYEOF
 
       - name: Check Justfile formatting
         if: matrix.check == 'justfmt'

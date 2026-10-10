@@ -73,6 +73,40 @@ baseline called for by
   .github/workflows`. The script and a ready-to-run workflow ship there and are
   copied in.
 
+## Pinning GitHub Actions
+
+Every external action referenced by a workflow (`uses:`) must be pinned to a
+**40-character commit SHA**, never to a version tag (`@v7`, `@v6.8`) or a
+branch ref (`@main`, `@stable`).
+
+A tag or branch is a moving target: an attacker who compromises an action
+maintainer, force-pushes a poisoned release, or deletes and recreates the tag
+can repoint it and silently change what every pipeline that "uses" it runs. A
+commit SHA cannot move without producing a new one, so it is the only pin that
+guarantees which code is executing. This is the supply-chain policy called for
+by [tuna-os/.github#175](https://github.com/tuna-os/.github/issues/175).
+
+**How to pin:**
+
+- Find the SHA with `gh api repos/<owner>/<repo>/commits/<ref> --jq .sha`, or
+  by clicking the tag on GitHub and reading the commit it points to.
+- Write `owner/repo/action@<40-char-SHA>`, optionally with a
+  `# <tag> as of <date>` comment so the human-readable ref stays discoverable.
+- Local path references (`./.github/actions/foo`, `.github/actions/foo`) are
+  exempt — they live in the repo being built and cannot be poisoned from outside.
+
+**Enforcement:**
+
+- The shared reusable lint workflow (`tuna-os/.github`) runs an `action-pin-check`
+  that fails the job on any unpinned external reference. Repos that use
+  `reusable-lint.yml` with its default `checks` get it automatically; others add
+  `"action-pin-check"` to the `checks` input.
+- To check locally before opening a PR, copy
+  `scripts/check-action-pins.py` from `tuna-os/.github` and run
+  `python3 scripts/check-action-pins.py .github/workflows` (exit 0 = compliant).
+- If a tag must be used temporarily, comment on the PR why and when to re-pin;
+  reviewers treat unpinned actions as blocking.
+
 ## Getting help
 
 - Ask in the relevant issue or PR.
