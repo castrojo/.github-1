@@ -72,10 +72,9 @@ jobs:
 
       - name: Run actionlint
         if: matrix.check == 'actionlint'
-        continue-on-error: true
         run: |
           echo "==> Running actionlint on workflows..."
-          actionlint .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true
+          actionlint .github/workflows/*.yml .github/workflows/*.yaml
 
       - name: Check Justfile formatting
         if: matrix.check == 'justfmt'
