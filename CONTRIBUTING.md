@@ -14,14 +14,19 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 | Apps | `tuna-os/gtk-office-suite` (Letters, Tables, Decks), `tuna-os/Tavern` |
 | Docs | `tuna-os/docs` (index lives in `docs/static/flatpak/index/static`) |
 
-**Note:** This table is a representative sample. For the complete, authoritative inventory of active repositories and their default branches, see [`ROADMAP-INDEX.md`](ROADMAP-INDEX.md). New repositories are added regularly — check that document to discover them.
+For the complete, authoritative inventory of active repositories, their default
+branches, and which already have a `ROADMAP.md`, see [`ROADMAP-INDEX.md`](ROADMAP-INDEX.md)
+before picking a repo. Several `tuna-os` repos do **not** default to `main` — that
+document lists each repo's real default branch. This table lags, because new
+repositories are added regularly; [`ROADMAP-INDEX.md`](ROADMAP-INDEX.md) is kept current.
 
 ## Getting started
 
 1. **Pick a repository and open an issue first** — describe the change and
    why before writing code. Small fixes (typos, docs) can skip this.
 2. **Fork the repo** (or ask a maintainer for push access) and create a
-   branch. We use the `arch/`, `fix/`, `feat/`, `chore/` prefix convention.
+   branch off the repository's actual default branch — not an assumed `main`.
+   We use the `arch/`, `fix/`, `feat/`, `chore/` prefix convention.
 3. **Check the repo's `AGENTS.md` / `justfile`** — most repos standardize
    build/test/lint behind `just` recipes (`just build`, `just test`, `just fix`).
 4. **Sign your commits** — every commit must be DCO-signed-off
