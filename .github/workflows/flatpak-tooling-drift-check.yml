@@ -1,13 +1,18 @@
 name: Flatpak Tooling Drift Check
 
-# Interim guard for tuna-os/tunaos#1183 (recommendation #3): update-index.py
-# is byte-copied across 8 repos with no shared source of truth. Until each
-# repo migrates to the update-flatpak-index composite action in this repo,
-# this workflow catches any repo's committed copy silently drifting from the
-# copy every repo is *supposed* to still match (the git blob every repo had
-# at the time #1183 was filed) — drift would mean one repo's index-writing
-# logic diverged from the other 7 without anyone noticing until a publish
-# job broke.
+# Guard for tuna-os/tunaos#1183 / tuna-os/.github#37: update-index.py used to
+# be byte-copied across many repos. The canonical copy now lives in
+# tuna-os/flatpak-index, and repos publish through the reusable
+# publish-flatpak.yml workflow (or the publish-/update-flatpak-index actions)
+# here. For every flatpak-publishing repo, this classifies it as one of:
+#
+#   migrated   no local copy, and a workflow uses the shared tooling
+#   in sync    still has a local copy, byte-identical to canonical
+#   drifted    local copy differs from canonical            (error)
+#   unwired    no local copy and no shared tooling either   (error)
+#
+# "Missing" is never treated as "migrated" on its own: a repo that moved or
+# dropped the file without adopting the shared tooling fails the check.
 
 on:
   schedule:
@@ -26,38 +31,92 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Compare each repo's copy against the canonical hash
+      - name: Classify each repo's flatpak index tooling
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          CANONICAL_SHA=$(git hash-object .github/actions/update-flatpak-index/update-index.py)
-          echo "Canonical blob sha: ${CANONICAL_SHA}"
+          # The canonical update-index.py lives in tuna-os/flatpak-index; the
+          # update-flatpak-index action here is a synced copy of it (#123).
+          # Check that link first, so "matches the action" still means
+          # "matches canonical".
+          ACTION_SHA=$(git hash-object .github/actions/update-flatpak-index/update-index.py)
+          if ! CANONICAL_SHA=$(gh api "repos/tuna-os/flatpak-index/contents/scripts/update-index.py" --jq '.sha' 2>/dev/null); then
+            echo "::error::could not read tuna-os/flatpak-index/scripts/update-index.py (canonical source moved or unreachable)"
+            exit 1
+          fi
+          echo "Canonical blob sha (tuna-os/flatpak-index): ${CANONICAL_SHA}"
 
-          REPOS="tuna-installer-cosmic tuna-installer-kde tuna-installer-niri tuna-installer-xfce bootc-installer dualcut mandelbrot gtk-office-suite"
+          PROBLEMS=""
+          if [[ "$ACTION_SHA" != "$CANONICAL_SHA" ]]; then
+            echo "::error::.github/actions/update-flatpak-index/update-index.py (${ACTION_SHA}) is out of sync with tuna-os/flatpak-index (${CANONICAL_SHA})"
+            PROBLEMS="${PROBLEMS} .github(action-copy)"
+          fi
 
-          DRIFTED=""
+          # Every repo that publishes to the tuna-os flatpak remote, or held a
+          # copy of update-index.py when tunaos#1183 was filed. The four
+          # tuna-installer-* repos were folded into bootc-installer and no
+          # longer exist, so they are not listed. Add a repo here when it
+          # starts publishing a flatpak.
+          REPOS="Tavern bootc-installer blueshell docs dualcut finupdate gtk-office-suite mandelbrot"
+
+          # What counts as "uses the shared tooling": the reusable workflow,
+          # or either composite action called directly.
+          SHARED_RE='tuna-os/\.github/\.github/(workflows/publish-flatpak\.yml|actions/(publish|update)-flatpak-index)@'
+
+          uses_shared_tooling() {
+            local repo="$1" f files
+            files=$(gh api "repos/tuna-os/${repo}/contents/.github/workflows" --jq '.[] | select(.type == "file") | .path' 2>/dev/null) || return 1
+            for f in $files; do
+              if gh api "repos/tuna-os/${repo}/contents/${f}" -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -Eq "$SHARED_RE"; then
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          CHECKED=0 MIGRATED=0 IN_SYNC=0
           for repo in $REPOS; do
-            SHA=$(gh api "repos/tuna-os/${repo}/contents/.github/scripts/update-index.py" --jq '.sha' 2>/dev/null || echo "MISSING")
-            if [[ "$SHA" == "MISSING" ]]; then
-              echo "::warning::${repo}: .github/scripts/update-index.py not found (already migrated off the copy, or moved)"
-            elif [[ "$SHA" != "$CANONICAL_SHA" ]]; then
-              echo "::error::${repo}: update-index.py has drifted (sha ${SHA} != canonical ${CANONICAL_SHA})"
-              DRIFTED="${DRIFTED} ${repo}"
+            CHECKED=$((CHECKED + 1))
+            # gh api prints the 404 body on stdout; only trust SHA on success.
+            if SHA=$(gh api "repos/tuna-os/${repo}/contents/.github/scripts/update-index.py" --jq '.sha' 2>/dev/null); then
+              HAS_COPY=1
             else
-              echo "${repo}: matches canonical"
+              HAS_COPY=0
+            fi
+
+            if [[ "$HAS_COPY" == 1 && "$SHA" == "$CANONICAL_SHA" ]]; then
+              echo "${repo}: local copy matches canonical (not yet migrated)"
+              IN_SYNC=$((IN_SYNC + 1))
+            elif [[ "$HAS_COPY" == 1 ]]; then
+              echo "::error::${repo}: local .github/scripts/update-index.py has drifted (sha ${SHA} != canonical ${CANONICAL_SHA})"
+              PROBLEMS="${PROBLEMS} ${repo}(drifted)"
+            elif uses_shared_tooling "$repo"; then
+              echo "${repo}: migrated (no local copy, uses the shared publish-flatpak tooling)"
+              MIGRATED=$((MIGRATED + 1))
+            else
+              # Neither the old copy nor the shared tooling: the file was moved
+              # or index publishing is unwired. Either way, not "migrated".
+              echo "::error::${repo}: no .github/scripts/update-index.py and no workflow uses the shared publish-flatpak tooling"
+              PROBLEMS="${PROBLEMS} ${repo}(unwired-or-moved)"
             fi
           done
 
-          if [[ -n "$DRIFTED" ]]; then
-            TITLE="Flatpak index tooling drift detected:${DRIFTED}"
+          echo "Checked ${CHECKED} repos: ${MIGRATED} migrated, ${IN_SYNC} with an in-sync local copy, $(( CHECKED - MIGRATED - IN_SYNC )) with a problem."
+
+          if [[ -n "$PROBLEMS" ]]; then
+            TITLE="Flatpak index tooling drift detected:${PROBLEMS}"
             EXISTING=$(gh issue list --repo "${{ github.repository }}" --search "in:title \"Flatpak index tooling drift detected\"" --state open --json number -q '.[0].number' || true)
             BODY_FILE=$(mktemp)
             {
-              echo "update-index.py has diverged from the canonical copy in \`.github/actions/update-flatpak-index/update-index.py\` in:${DRIFTED}"
+              echo "Flatpak index tooling check found problems in:${PROBLEMS}"
               echo ""
-              echo "Either port the fix back into the canonical copy (if the drift is an improvement worth keeping org-wide), or migrate the drifted repo(s) onto the [update-flatpak-index action](../actions/update-flatpak-index) so there's nothing left to drift. See tuna-os/tunaos#1183."
+              echo "- \`(drifted)\`: the repo carries its own \`.github/scripts/update-index.py\` that differs from the canonical [tuna-os/flatpak-index/scripts/update-index.py](https://github.com/tuna-os/flatpak-index/blob/main/scripts/update-index.py). Migrate it to the reusable \`publish-flatpak.yml\` workflow (or the \`publish-flatpak-index\` action) in tuna-os/.github and delete the copy, or port the change back to the canonical script."
+              echo "- \`(unwired-or-moved)\`: no local copy and no workflow uses the shared tooling."
+              echo "- \`.github(action-copy)\`: the update-flatpak-index action's copy is out of sync with tuna-os/flatpak-index."
+              echo ""
+              echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. See tuna-os/.github#37."
             } > "$BODY_FILE"
             if [[ -n "$EXISTING" ]]; then
               gh issue comment "$EXISTING" --repo "${{ github.repository }}" --body-file "$BODY_FILE"
@@ -67,5 +126,3 @@ jobs:
             fi
             exit 1
           fi
-
-          echo "No drift — all 8 repos match the canonical copy (or have already migrated off it)."

@@ -52,3 +52,20 @@ repository. That detection is resolved at runtime from the repo being checked,
 so it is active in the aggregator and inert everywhere else — which is why
 running this check *in the source repos* is what actually gets that prose
 covered.
+
+## What a failing run tells you
+
+A bare `STE budget exceeded: 251 > 247` is a total, not a hint. The run now
+says what to fix, where:
+
+- On failure, the full detail follows the verdict: `file:line`, rule number,
+  what is wrong, and — where the rule names one — the approved replacement.
+  Reproduce it locally with `just ste`.
+- On pull requests, an advisory section reports only what the branch itself
+  introduced, as `::warning` annotations that render inline on the PR's Files
+  tab. It never decides pass/fail; the budget gate does.
+
+For agents: `ste-lint.mjs --changed-only --base origin/main --format json`
+prints one object per new finding (`file`, `line`, `rule`, `message`,
+`sentence`) on stdout, with human context on stderr. Parse that instead of
+scraping the log.

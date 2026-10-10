@@ -20,7 +20,7 @@ import {
   checkSentenceLength, checkPassiveVoice, checkGerunds,
   checkUnapprovedWords, checkNounCluster, checkParagraphLength,
 } from './ste-rules.mjs';
-import {stripNonProse, blocks, lintText, generatedDirs} from './ste-lint.mjs';
+import {stripNonProse, blocks, lintText, generatedDirs, annotationFor, parseAddedLines, inAddedLines} from './ste-lint.mjs';
 import {pathToFileURL} from 'node:url';
 
 // Optional: present only in the docs aggregator. See the guarded section below.
@@ -375,6 +375,104 @@ test('a hand-written page that links to GitHub is still checked (#123)', () => {
     'the page carries findings and must be reported, not skipped:\n' + out);
   assert.doesNotMatch(out, /generated file\(s\) skipped/,
     'nothing in this fixture is generated:\n' + out);
+});
+
+// ── hints: file:line, annotations, delta ────────────────────────────────────
+// A finding without a location is a total, not a hint. These cover the
+// machinery that points the author — human or agent — at the prose to fix.
+
+test('stripping preserves line numbers across code fences', () => {
+  const md = '# Title\n\n```sh\nutilize this\nmore code\n```\n\nReal text here.\n';
+  const stripped = stripNonProse(md);
+  assert.equal(stripped.split('\n').length, md.split('\n').length,
+    'every removed line leaves a newline behind');
+  assert.ok(!stripped.includes('utilize'), 'fence content is still removed');
+});
+
+test('blocks remember their starting line', () => {
+  const found = blocks('First line.\n\n- Do the thing\n- Do the other thing\n\nLast line here.');
+  const byText = new Map(found.map((b) => [b.text, b.line]));
+  assert.equal(byText.get('First line.'), 1, JSON.stringify(found));
+  assert.equal(byText.get('Do the thing'), 3, JSON.stringify(found));
+  assert.equal(byText.get('Do the other thing'), 4, JSON.stringify(found));
+  assert.equal(byText.get('Last line here.'), 6, JSON.stringify(found));
+});
+
+test('findings carry the file line of their prose', () => {
+  const md = '# Title\n\n```sh\nutilize this\n```\n\nYou should leverage the dashboard to commence work.\n';
+  const findings = lintText(md);
+  assert.ok(findings.length > 0, 'expected findings');
+  assert.ok(findings.every((f) => f.line === 7), JSON.stringify(findings));
+});
+
+test('annotations escape workflow-command syntax', () => {
+  // Colons and commas end properties, so file/title escape them; the message
+  // body only needs %, CR and LF escaped — a colon there is legal text.
+  const line = annotationFor('docs/a,b.md', {line: 3, rule: 'STE 1.5', message: '100% off: use "y"\nnow'});
+  assert.ok(line.startsWith('::warning file=docs/a%2Cb.md,line=3,title=STE 1.5::'),
+    'file and title are property-escaped: ' + line);
+  assert.ok(line.includes('100%25 off: use "y"%0Anow'),
+    'data escapes %, CR and LF but keeps colons: ' + line);
+});
+
+test('added-line ranges cover exactly the added lines', () => {
+  // Genuine `git diff -U0` shape: no context lines, zero-count hunks for
+  // pure deletions.
+  const diff = [
+    'diff --git a/docs/a.md b/docs/a.md',
+    '--- a/docs/a.md',
+    '+++ b/docs/a.md',
+    '@@ -1,0 +1,2 @@',
+    '+added one',
+    '+added two',
+    '@@ -10,0 +12 @@',
+    '+single',
+    '@@ -20,2 +21,0 @@',
+    '-removed',
+    '-removed',
+  ].join('\n');
+  const ranges = parseAddedLines(diff);
+  assert.ok(inAddedLines(ranges.get('docs/a.md'), 1));
+  assert.ok(inAddedLines(ranges.get('docs/a.md'), 2));
+  assert.ok(!inAddedLines(ranges.get('docs/a.md'), 3), 'outside the hunk');
+  assert.ok(inAddedLines(ranges.get('docs/a.md'), 12));
+  assert.ok(!inAddedLines(ranges.get('docs/a.md'), 11), 'zero-context gap is not added');
+  assert.ok(!inAddedLines(ranges.get('docs/a.md') || [], 21), 'a pure-deletion hunk adds no lines');
+});
+
+test('--format json keeps stdout parseable', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ste-lint-json-'));
+  mkdirSync(join(root, 'docs'), {recursive: true});
+  writeFileSync(join(root, 'docs', 'a.md'), 'You should leverage the dashboard.\n');
+  const out = execFileSync(process.execPath, [join(HERE, 'ste-lint.mjs'), '--format', 'json', 'docs/a.md'],
+    {cwd: root, encoding: 'utf8'});
+  const parsed = JSON.parse(out);
+  assert.ok(parsed.length > 0, 'expected findings');
+  assert.equal(parsed[0].file, 'docs/a.md', JSON.stringify(parsed[0]));
+  assert.equal(parsed[0].line, 1, JSON.stringify(parsed[0]));
+  assert.ok(parsed[0].rule && parsed[0].message, JSON.stringify(parsed[0]));
+});
+
+test('--changed-only reports only what the branch added', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ste-lint-delta-'));
+  const git = ( ...a) => execFileSync('git', a, {cwd: root, encoding: 'utf8'});
+  git('init', '-q', '.');
+  git('config', 'user.email', 't@t');
+  git('config', 'user.name', 't');
+  mkdirSync(join(root, 'docs'), {recursive: true});
+  writeFileSync(join(root, 'docs', 'a.md'), 'Building the image is performed in order to utilize the cache.\n');
+  git('add', '-A');
+  git('commit', '-qm', 'base');
+  writeFileSync(join(root, 'docs', 'a.md'),
+    'Building the image is performed in order to utilize the cache.\n\nYou should leverage the dashboard.\n');
+  git('add', '-A');
+  git('commit', '-qm', 'change');
+  const out = execFileSync(process.execPath,
+    [join(HERE, 'ste-lint.mjs'), '--changed-only', '--base', 'HEAD~1', '--format', 'json', 'docs/a.md'],
+    {cwd: root, encoding: 'utf8'});
+  const parsed = JSON.parse(out);
+  assert.ok(parsed.length > 0, 'expected the new line to be reported');
+  assert.ok(parsed.every((f) => f.line === 3), JSON.stringify(parsed));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

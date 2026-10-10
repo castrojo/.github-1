@@ -78,6 +78,15 @@ CASES: list[tuple[str, dict, bool]] = [
 
 def main() -> int:
     failures = []
+
+    repo_root = pathlib.Path(__file__).parents[1]
+    starter_checker = repo_root / "project-starter/scripts/check-renovate-automerge-policy.py"
+    if _src.read_bytes() != starter_checker.read_bytes():
+        failures.append(
+            "  - project-starter policy checker differs from the canonical "
+            "scripts/check-renovate-automerge-policy.py"
+        )
+
     for name, config, expect_violation in CASES:
         got = policy.check(config)
         if bool(got) != expect_violation:
@@ -88,7 +97,7 @@ def main() -> int:
     # The shipped preset every repo extends must itself be compliant.
     import json
 
-    preset = json.loads((pathlib.Path(__file__).parents[1] / "default.json").read_text(encoding="utf-8"))
+    preset = json.loads((repo_root / "default.json").read_text(encoding="utf-8"))
     if policy.check(preset):
         failures.append(f"  - default.json (the shared preset) violates the policy: {policy.check(preset)}")
 
@@ -96,7 +105,10 @@ def main() -> int:
         print("FAIL: renovate automerge policy checker regressed:", file=sys.stderr)
         print("\n".join(failures), file=sys.stderr)
         return 1
-    print(f"OK: {len(CASES)} policy cases + default.json behave as pinned.")
+    print(
+        f"OK: project-starter checker is synchronized; {len(CASES)} policy "
+        "cases + default.json behave as pinned."
+    )
     return 0
 
 

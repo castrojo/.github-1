@@ -63,6 +63,25 @@ runs:
           exit 1
         fi
 
+        # Auth problems are not races: fail on them at once, with the real
+        # reason, instead of retrying MAX_ATTEMPTS times and blaming a
+        # concurrent writer. A caller whose repo cannot see the secret
+        # passes an empty string here.
+        export GIT_TERMINAL_PROMPT=0
+        if [ -z "$FLATPAK_INDEX_TOKEN" ]; then
+          echo "::error::token input is empty -- is FLATPAK_INDEX_TOKEN available to ${GITHUB_REPOSITORY}?" >&2
+          exit 1
+        fi
+        can_push="$(curl -sS -w '\n%{http_code}' -H "Authorization: Bearer $FLATPAK_INDEX_TOKEN" \
+          "https://api.github.com/repos/${DOCS_REPO}" \
+          | python3 -c 'import json,sys
+        body, _, code = sys.stdin.read().rpartition("\n")
+        print(json.loads(body).get("permissions", {}).get("push", False) if code == "200" else "HTTP " + code)')"
+        if [ "$can_push" != "True" ]; then
+          echo "::error::FLATPAK_INDEX_TOKEN cannot push to ${DOCS_REPO} (permissions.push=${can_push}): expired, revoked, or lacks Contents: write" >&2
+          exit 1
+        fi
+
         WORKDIR="$(mktemp -d)"
         INDEX_REPO="$WORKDIR/index-repo"
 
@@ -70,9 +89,11 @@ runs:
           rm -rf "$INDEX_REPO"
           git clone --depth 1 "https://github.com/${DOCS_REPO}.git" "$INDEX_REPO"
           # Header-based auth so the token never lands in .git/config, `git
-          # remote -v`, or process listings.
-          git -C "$INDEX_REPO" config --local http.extraheader \
-            "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$FLATPAK_INDEX_TOKEN" | base64 -w0)"
+          # remote -v`, or process listings. Use stdin to keep token out of
+          # process arguments where it could be captured by ps/proc inspection.
+          local auth_header
+          auth_header="AUTHORIZATION: basic $(echo -n "x-access-token:$FLATPAK_INDEX_TOKEN" | base64 -w0)"
+          git -C "$INDEX_REPO" config --local http.extraheader "$auth_header"
           git -C "$INDEX_REPO" config user.name "github-actions[bot]"
           git -C "$INDEX_REPO" config user.email "github-actions[bot]@users.noreply.github.com"
         }
@@ -97,12 +118,19 @@ runs:
           fi
           git commit -q -m "chore(flatpak): update ${REPO_NAME} OCI index"
 
-          if git push origin HEAD:main; then
+          if push_err="$(git push origin HEAD:main 2>&1)"; then
             echo "Pushed index update for $REPO_NAME (attempt $attempt)"
             popd >/dev/null
             break
           fi
           popd >/dev/null
+          echo "$push_err" >&2
+          # Only a lost race (non-fast-forward) is worth a retry; anything
+          # else (auth, branch protection, network) fails now.
+          if ! grep -qE 'non-fast-forward|fetch first|cannot lock ref' <<<"$push_err"; then
+            echo "::error::push to ${DOCS_REPO} failed for a reason other than a concurrent writer -- see the git output above" >&2
+            exit 1
+          fi
 
           if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
             echo "::error::push rejected after $MAX_ATTEMPTS attempts (concurrent writers to $DOCS_REPO) -- giving up" >&2

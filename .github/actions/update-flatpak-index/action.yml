@@ -1,8 +1,10 @@
 name: "Update Flatpak OCI Index"
 description: >-
-  Canonical implementation of update-index.py (tuna-os/tunaos#1183). Reads a
-  local OCI layout directory and updates a Flatpak index/static file with the
-  published image's digest, architecture, and org.flatpak.* labels.
+  Synced implementation of update-index.py (canonical: tuna-os/flatpak-index/scripts/update-index.py).
+  Reads a local OCI layout directory and updates a Flatpak index/static file with the
+  published image's digest, architecture, and preserved labels (org.flatpak.* and
+  org.freedesktop.appstream.*). Supports AppStream metadata validation to ensure
+  software centres can display the application in their catalogues.
 author: tuna-os
 
 inputs:
@@ -24,6 +26,10 @@ inputs:
     description: Space-separated list of tags for this image entry
     required: false
     default: latest
+  require-appstream:
+    description: Fail instead of warning when the image carries no AppStream metadata
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -44,6 +50,7 @@ runs:
         REPO_NAME: ${{ inputs.repo-name }}
         REGISTRY: ${{ inputs.registry }}
         TAGS: ${{ inputs.tags }}
+        REQUIRE_APPSTREAM: ${{ inputs.require-appstream }}
       run: |
         set -euo pipefail
 
@@ -66,4 +73,5 @@ runs:
           --index-file "$INDEX_FILE" \
           --repo-name "$REPO_NAME" \
           --registry "$REGISTRY" \
-          --tags "${tag_args[@]}"
+          --tags "${tag_args[@]}" \
+          $([ "$REQUIRE_APPSTREAM" = "true" ] && echo "--require-appstream" || true)

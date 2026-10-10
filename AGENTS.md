@@ -39,7 +39,7 @@ whose jobs hold `packages: write` and `FLATPAK_INDEX_TOKEN`.
 ## The drift check, and what it does not cover
 
 `flatpak-tooling-drift-check.yml` is an interim guard for
-[tunaos#1183](https://github.com/tuna-os/tunaOS/issues/1183): `update-index.py`
+[tuna-os#1183](https://github.com/tuna-os/tunaOS/issues/1183): `update-index.py`
 was byte-copied across repos with no shared source of truth. Weekly, it
 compares eight application repos' `.github/scripts/update-index.py` against
 `.github/actions/update-flatpak-index/update-index.py`, which it treats as
@@ -70,7 +70,7 @@ watching it.
 ## Default branches are not all `main`
 
 `ROADMAP-INDEX.md` is the org-wide inventory, and it exists because the
-tunaOS ROADMAP drifted against a guess. The lesson is written into it:
+TunaOS ROADMAP drifted against a guess. The lesson is written into it:
 **`bootc-installer`, `fisherman`, `changelog-action`, `kde-build-meta` and
 `mariner` default to something other than `main`.** Hardcoding `main` is how a
 roadmap got stranded on the wrong branch while `dev` stayed unplanned. Resolve
@@ -85,11 +85,23 @@ python3 scripts/check-renovate-automerge-policy.py renovate.json
 `renovate-policy-check.yml` enforces [#12](https://github.com/tuna-os/.github/issues/12)
 against this repo's own `renovate.json`: a syntactically valid config can still
 automerge major and minor updates once `packageRules` are layered
-(tunaOS#1612, tunaOS#1636), which a schema validator alone would not catch.
+(tuna-os#1612, tuna-os#1636), which a schema validator alone would not catch.
 
 `scripts/check-renovate-automerge-policy.py` and
 `project-starter/scripts/check-renovate-automerge-policy.py` are byte-identical
 copies today, with nothing enforcing that.
+
+## Workflow permissions check
+
+```bash
+python3 scripts/check-workflow-permissions.py .github/workflows
+```
+
+`workflow-permissions-check.yml` enforces [tuna-os/.github#155](https://github.com/tuna-os/.github/issues/155): every workflow must declare a top-level `permissions:` block. A workflow with none inherits the repository's configured default token scope, which is almost always broader than the jobs actually need. The check is dependency-free — it parses only top-level mapping keys and their indentation, so it runs on the ubuntu runner without a `pip install`.
+
+`scripts/check-workflow-permissions.py` and `project-starter/scripts/check-workflow-permissions.py` are byte-identical copies today; copy the script into any repo that ships its own copy, the way the renovate check does.
+
+`publish-flatpak.yml` and `ste-lint.yml` were the two workflows that lacked the block; `publish-flatpak.yml` takes `contents: write` (checkout + `gh release upload`) and `packages: write` (GHCR push + index update), `ste-lint.yml` takes `contents: read`.
 
 ## `.claude/skills/hive-contribute/`
 

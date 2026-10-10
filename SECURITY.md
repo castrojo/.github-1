@@ -1,6 +1,6 @@
 # Security Policy
 
-tunaOS ships bootable container images and installer tooling. We take
+TunaOS ships bootable container images and installer tooling. We take
 security reports seriously.
 
 ## Reporting a vulnerability

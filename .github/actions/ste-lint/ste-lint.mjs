@@ -13,10 +13,18 @@
 //   node scripts/ste-lint.mjs docs/intro.md   # named files
 //   node scripts/ste-lint.mjs --summary       # counts per file, no detail
 //   node scripts/ste-lint.mjs --max 0         # fail if any finding remains
+//   node scripts/ste-lint.mjs --format json   # machine-readable findings
+//   node scripts/ste-lint.mjs --annotations   # ::warning hints, inline on PRs
+//   node scripts/ste-lint.mjs --changed-only --base origin/main
+//                                             # only what the branch added
 //
 // Exit code is 1 when the finding count is above --max, so CI can hold a
 // budget and ratchet it down rather than demanding perfection on day one.
+// --changed-only never changes the gate; it reports the branch's own new
+// findings (with file:line) so the author — human or agent — knows what to
+// fix instead of staring at a repo-wide total.
 
+import {execFileSync} from 'node:child_process';
 import {readFileSync, readdirSync, statSync} from 'node:fs';
 import {join, relative} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -150,23 +158,36 @@ export function disabledReason(content) {
   return match ? match[1] : null;
 }
 
+// newlinesFor keeps line numbers stable when a multiline region is removed:
+// the stripped text has the same number of lines as the input, so a finding's
+// line in the stripped text is its line in the file. Without this, every
+// finding below a code fence points at the wrong line, and a hint that sends
+// the reader to the wrong line is worse than no hint.
+function newlinesFor(match) {
+  return '\n'.repeat((match.match(/\n/g) || []).length);
+}
+
 // stripNonProse removes everything the rules must not see. Order matters:
 // fenced code first, or a fence containing a heading confuses the rest.
+//
+// Multiline removals preserve newlines (see newlinesFor) so findings keep the
+// file's line numbers. Single-line removals blank the line's content and leave
+// the newline, which preserves numbering the same way.
 export function stripNonProse(markdown) {
   let text = markdown;
 
   // Regions the author opted out of, with a reason.
-  text = text.replace(DISABLE_BLOCK, '');
+  text = text.replace(DISABLE_BLOCK, newlinesFor);
 
   // Front matter.
-  text = text.replace(/^---\n[\s\S]*?\n---\n/, '');
+  text = text.replace(/^---\n[\s\S]*?\n---\n/, newlinesFor);
   // Fenced code, including ```mdx-code-block and ~~~ fences.
-  text = text.replace(/^```[\s\S]*?^```$/gm, '');
-  text = text.replace(/^~~~[\s\S]*?^~~~$/gm, '');
+  text = text.replace(/^```[\s\S]*?^```$/gm, newlinesFor);
+  text = text.replace(/^~~~[\s\S]*?^~~~$/gm, newlinesFor);
   // Indented code blocks.
   text = text.replace(/^(?: {4}|\t).*$/gm, '');
   // JSX / HTML blocks and inline tags — Docusaurus pages are full of them.
-  text = text.replace(/^<[A-Za-z][\s\S]*?^\/?>$/gm, '');
+  text = text.replace(/^<[A-Za-z][\s\S]*?^\/?>$/gm, newlinesFor);
   text = text.replace(/<[^>]+>/g, ' ');
   // Import/export lines in .mdx.
   text = text.replace(/^(?:import|export)\s.*$/gm, '');
@@ -193,11 +214,13 @@ export function stripNonProse(markdown) {
 // than description, and that is where the difference lives in a docs site.
 export function blocks(prose) {
   const out = [];
-  for (const chunk of prose.split(/\n{2,}/)) {
-    const trimmed = chunk.trim();
-    if (!trimmed) continue;
-
-    const lines = trimmed.split('\n');
+  // Line numbers are 1-based positions in `prose`, which — because
+  // stripNonProse preserves newlines — are positions in the file. Chunks are
+  // separated by blank lines, exactly as prose.split(/\n{2,}/) did; walking
+  // the lines explicitly is what lets each block remember where it started.
+  let chunk = [];
+  const flush = () => {
+    if (!chunk.length) return;
     const listItem = /^\s*(?:[-*+]|\d+[.)])\s+/;
 
     // A chunk can be a paragraph, a list, or a paragraph with a list stuck to
@@ -206,12 +229,13 @@ export function blocks(prose) {
     // made of three separate bullets, so the lead-in and the items are
     // separated here.
     const lead = [];
+    let leadLine = null;
     let seenItem = false;
-    for (const line of lines) {
+    for (const {text: line, line: lineNo} of chunk) {
       if (listItem.test(line)) {
         seenItem = true;
         const text = line.replace(listItem, '').trim();
-        if (text) out.push({text, procedural: true});
+        if (text) out.push({text, procedural: true, line: lineNo});
         continue;
       }
       if (seenItem) {
@@ -220,16 +244,30 @@ export function blocks(prose) {
         if (previous) previous.text += ' ' + line.trim();
         continue;
       }
+      if (leadLine === null) leadLine = lineNo;
       lead.push(line.trim());
     }
     if (lead.length) {
-      out.push({text: lead.join(' '), procedural: false});
+      out.push({text: lead.join(' '), procedural: false, line: leadLine});
     }
+    chunk = [];
+  };
+  const lines = prose.split('\n');
+  for (let i = 0; i <= lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line.trim() === '') {
+      flush();
+      continue;
+    }
+    chunk.push({text: line, line: i + 1});
   }
+  flush();
   return out;
 }
 
-// lintText returns every finding in one document's prose.
+// lintText returns every finding in one document's prose. Each finding
+// carries the 1-based line where its block starts, so callers can point the
+// reader at the prose to fix instead of at a repo-wide total.
 export function lintText(markdown) {
   const prose = stripNonProse(markdown);
   const findings = [];
@@ -238,15 +276,75 @@ export function lintText(markdown) {
     const sentences = splitSentences(block.text);
     if (!block.procedural) {
       const long = checkParagraphLength(sentences);
-      if (long) findings.push({...long, sentence: block.text.slice(0, 60) + '…'});
+      if (long) findings.push({...long, sentence: block.text.slice(0, 60) + '…', line: block.line});
     }
     for (const sentence of sentences) {
       for (const finding of checkSentence(sentence, {procedural: block.procedural})) {
-        findings.push({...finding, sentence});
+        findings.push({...finding, sentence, line: block.line});
       }
     }
   }
   return findings;
+}
+
+// ── hints for machines ──────────────────────────────────────────────────────
+// Hive (and any CI consumer) needs more than a total: file, line, rule, what
+// is wrong, and what to do about it. These helpers format lintText findings
+// for the two channels CI offers — workflow commands (annotations, which
+// render inline on the PR) and JSON (which an agent can parse).
+
+function escapeAnnotationData(s) {
+  return String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+}
+
+function escapeAnnotationProp(s) {
+  return escapeAnnotationData(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
+}
+
+// annotationFor renders one finding as a GitHub workflow command. Warnings,
+// not errors: the budget gate still decides pass/fail, so a hint must never
+// fail a run that the gate passes.
+export function annotationFor(file, finding) {
+  const line = finding.line || 1;
+  const body = `${finding.rule} ${finding.message}`;
+  return `::warning file=${escapeAnnotationProp(file)},line=${line},title=${escapeAnnotationProp(finding.rule)}::${escapeAnnotationData(body)}`;
+}
+
+// parseAddedLines reads `git diff -U0` output and returns, per file, the
+// ranges of added lines: {line counts as added} as [{start, count}]. Pure
+// (takes diff text) so the tests can drive it without a repository.
+export function parseAddedLines(diffText) {
+  const ranges = new Map();
+  let file = null;
+  for (const line of diffText.split('\n')) {
+    const fileMatch = line.match(/^\+\+\+ b\/(.+)$/);
+    if (fileMatch) {
+      file = fileMatch[1];
+      if (!ranges.has(file)) ranges.set(file, []);
+      continue;
+    }
+    const hunkMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+    if (hunkMatch && file) {
+      const start = Number(hunkMatch[1]);
+      const count = hunkMatch[2] === undefined ? 1 : Number(hunkMatch[2]);
+      if (count > 0) ranges.get(file).push({start, count});
+    }
+  }
+  return ranges;
+}
+
+export function inAddedLines(ranges, line) {
+  return ranges.some(({start, count}) => line >= start && line < start + count);
+}
+
+// addedLinesForBase diffs the working tree against <base> and returns added
+// line ranges per repo-relative file. Three-dot range: what the branch
+// introduces over its merge base, which is the PR's own contribution.
+export function addedLinesForBase(base) {
+  const diff = execFileSync('git', ['diff', '-U0', `${base}...HEAD`, '--'], {
+    cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+  });
+  return parseAddedLines(diff);
 }
 
 // ── walking the repository ────────────────────────────────────────────────────
@@ -290,10 +388,48 @@ function main() {
   const args = process.argv.slice(2);
   const summary = args.includes('--summary');
   const includeGenerated = args.includes('--include-generated');
+  const annotations = args.includes('--annotations');
+  const changedOnly = args.includes('--changed-only');
+  const formatIndex = args.indexOf('--format');
+  const format = formatIndex >= 0 ? args[formatIndex + 1] : 'text';
+  const baseIndex = args.indexOf('--base');
+  const base = baseIndex >= 0 ? args[baseIndex + 1] : null;
   const maxIndex = args.indexOf('--max');
   const max = maxIndex >= 0 ? Number(args[maxIndex + 1]) : Infinity;
-  const files = args.filter((a) => !a.startsWith('--') && !/^\d+$/.test(a));
-  const targets = files.length ? files.map((f) => join(ROOT, f)) : defaultTargets();
+  // Flag values are not files. --base/--format/--max each take one value;
+  // every other --flag takes none.
+  const takesValue = new Set(['--base', '--format', '--max']);
+  const files = args.filter((a, i) => {
+    if (a.startsWith('--')) return false;
+    const prev = args[i - 1];
+    if (takesValue.has(prev)) return false;
+    return !/^\d+$/.test(a);
+  });
+  let targets = files.length ? files.map((f) => join(ROOT, f)) : defaultTargets();
+
+  // Delta mode: only what the PR added. The budget gate answers "is the repo
+  // over budget"; this answers the question hive actually asks — "what did I
+  // introduce, and where". Findings are kept when their line falls on a line
+  // the diff added. Git failing (shallow checkout, no base) falls back to the
+  // whole-repo behavior with a note, never to silence.
+  let addedByFile = null;
+  let deltaNote = null;
+  if (changedOnly) {
+    if (!base) {
+      console.error('--changed-only needs --base <ref>');
+      process.exit(2);
+    }
+    try {
+      addedByFile = addedLinesForBase(base);
+      const changed = [...addedByFile.keys()].filter((f) => /\.mdx?$/.test(f));
+      targets = files.length
+        ? targets.filter((t) => changed.includes(relative(ROOT, t)))
+        : changed.map((f) => join(ROOT, f));
+    } catch (e) {
+      deltaNote = `delta unavailable (${e.message}); reporting whole-repo findings instead`;
+      addedByFile = null;
+    }
+  }
 
   let total = 0;
   let skipped = 0;
@@ -302,7 +438,13 @@ function main() {
   const generated = includeGenerated ? new Set() : generatedDirs();
 
   for (const file of targets) {
-    const content = readFileSync(file, 'utf8');
+    let content;
+    try {
+      content = readFileSync(file, 'utf8');
+    } catch {
+      continue;
+    }
+    const rel = relative(ROOT, file);
     const inGeneratedTree = [...generated].some((d) => file.startsWith(d + '/'));
     if (!includeGenerated && inGeneratedTree) {
       skipped++;
@@ -310,42 +452,80 @@ function main() {
     }
     const reason = disabledReason(content);
     if (reason) {
-      optedOut.push({file: relative(ROOT, file), reason});
+      optedOut.push({file: rel, reason});
       continue;
     }
-    const findings = lintText(content);
+    let findings = lintText(content);
+    if (addedByFile) {
+      // Delta mode: keep what the branch added. A finding on an untouched
+      // line is pre-existing debt, not this PR's to answer for.
+      const ranges = addedByFile.get(rel) || [];
+      findings = findings.filter((f) => inAddedLines(ranges, f.line));
+    }
     if (!findings.length) continue;
     total += findings.length;
-    perFile.push({file: relative(ROOT, file), findings});
+    perFile.push({file: rel, findings});
   }
 
   perFile.sort((a, b) => b.findings.length - a.findings.length);
 
-  for (const {file, findings} of perFile) {
-    if (summary) {
-      console.log(`${String(findings.length).padStart(5)}  ${file}`);
-      continue;
+  if (format === 'json') {
+    // Machine channel: one object per finding, everything hive needs to fix
+    // it — file, line, rule, what is wrong, the approved replacement where
+    // the rule has one, and the sentence for context. Totals go to stderr so
+    // stdout stays parseable.
+    const out = perFile.flatMap(({file, findings}) => findings.map((f) => ({
+      file, line: f.line, rule: f.rule, message: f.message, sentence: f.sentence || null,
+    })));
+    console.log(JSON.stringify(out));
+    if (deltaNote) console.error(deltaNote);
+    console.error(`${total} finding(s) across ${perFile.length} file(s)`);
+  } else {
+    if (deltaNote) console.log(deltaNote);
+    // On a budget failure the summary alone is unactionable ("251 > 247"
+    // with per-file counts), so the full detail always follows a failure.
+    const showDetail = !summary || total > max;
+    for (const {file, findings} of perFile) {
+      if (!showDetail) {
+        console.log(`${String(findings.length).padStart(5)}  ${file}`);
+        continue;
+      }
+      console.log(`\n${file}  (${findings.length})`);
+      for (const f of findings) {
+        console.log(`  ${file}:${f.line}  ${f.rule}  ${f.message}`);
+        if (f.sentence) console.log(`         ${f.sentence.slice(0, 120)}`);
+      }
     }
-    console.log(`\n${file}  (${findings.length})`);
-    for (const f of findings) {
-      console.log(`  ${f.rule}  ${f.message}`);
-      if (f.sentence) console.log(`         ${f.sentence.slice(0, 100)}`);
-    }
+    console.log(`\n${total} finding(s) across ${perFile.length} file(s)`);
   }
 
-  console.log(`\n${total} finding(s) across ${perFile.length} file(s)`);
+  // No annotations when the delta fell back to whole-repo: those findings
+  // are mostly pre-existing debt, and presenting them as "introduced by this
+  // PR" would send the author after prose they did not write.
+  if (annotations && !deltaNote) {
+    // Inline hints on the PR. Capped: beyond this the log carries the rest,
+    // and a flood of annotations trains readers to ignore them.
+    const flat = perFile.flatMap(({file, findings}) => findings.map((f) => ({file, finding: f})));
+    const capped = flat.slice(0, 50);
+    for (const {file, finding} of capped) console.log(annotationFor(file, finding));
+    if (flat.length > capped.length) {
+      console.log(`... and ${flat.length - capped.length} more finding(s), see the detail above`);
+    }
+  }
+  // In JSON mode stdout is the machine channel; human context goes to stderr.
+  const say = format === 'json' ? console.error : console.log;
   for (const {file, reason} of optedOut) {
-    console.log(`opted out: ${file} — ${reason}`);
+    say(`opted out: ${file} — ${reason}`);
   }
   if (skipped) {
-    console.log(`${skipped} generated file(s) skipped — their prose is authored upstream ` +
+    say(`${skipped} generated file(s) skipped — their prose is authored upstream ` +
       `(pass --include-generated to check them anyway)`);
     // Name the trees. A tree that drops out of this list is prose the checker
     // has started to hold this repo responsible for, and a tree that appears in
     // it wrongly is prose nobody is checking — both are worth seeing in the log
     // rather than inferring from a total that moved.
     const trees = [...generated].map((d) => relative(ROOT, d)).sort();
-    if (trees.length) console.log(`generated trees: ${trees.join(' ')}`);
+    if (trees.length) say(`generated trees: ${trees.join(' ')}`);
   }
   if (total > max) {
     console.error(`\nSTE budget exceeded: ${total} > ${max}`);

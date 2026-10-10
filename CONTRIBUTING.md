@@ -1,6 +1,6 @@
-# Contributing to tunaOS
+# Contributing to TunaOS
 
-Thanks for wanting to contribute! tunaOS is a set of organizations-spanning
+Thanks for wanting to contribute! TunaOS is a set of organizations-spanning
 repositories that build bootable, immutable Linux desktop images from a matrix
 of base OS × desktop × kernel × drivers, plus installer and migration tooling.
 
@@ -8,11 +8,13 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
 
 | Area | Repos |
 |---|---|
-| Image build factory | `tuna-os/tunaos`, `tuna-os/tunaos-packages`, `tuna-os/tromso` |
+| Image build factory | `tuna-os/tunaOS`, `tuna-os/tunaos-packages`, `tuna-os/tromso` |
 | Installers | `tuna-os/bootc-installer`, `tuna-os/tuna-installer-{cosmic,kde,niri,xfce}` |
 | Migration | `tuna-os/wootc`, `tuna-os/bootc-migrate` |
 | Apps | `tuna-os/gtk-office-suite` (Letters, Tables, Decks), `tuna-os/Tavern` |
 | Docs | `tuna-os/docs` (index lives in `docs/static/flatpak/index/static`) |
+
+**Note:** This table is a representative sample. For the complete, authoritative inventory of active repositories and their default branches, see [`ROADMAP-INDEX.md`](ROADMAP-INDEX.md). New repositories are added regularly — check that document to discover them.
 
 ## Getting started
 
@@ -42,15 +44,38 @@ of base OS × desktop × kernel × drivers, plus installer and migration tooling
   publish tooling, `update-index.py`). Prefer reusing it over copying.
 - **Deliberate duplication is flagged.** Some frontends intentionally
   reimplement a shared contract per language (see
-  `tunaos/docs/docs/bootc-installer-asahi/UNIFIED-INSTALL-CONTRACT.md` —
+  `tuna-os/docs/docs/bootc-installer-asahi/UNIFIED-INSTALL-CONTRACT.md` —
   the `recipe.json` contract shared by the installer frontends). Match the
   contract; don't fork it.
 - **Agents file `[architect]`/`[sec-check]`/`[strategist]` issues.** These are
   structural findings — treat them as prioritized backlog, not noise.
 
+## CI/CD security
+
+Every workflow in a tunaOS repository must declare an explicit top-level
+`permissions:` block, following the principle of least privilege:
+
+```yaml
+permissions:
+  contents: read
+```
+
+A workflow with no block inherits the repository's configured default token
+scope, which is almost always broader than the jobs actually need. This is the
+baseline called for by
+[tuna-os/.github#155](https://github.com/tuna-os/.github/issues/155).
+
+- **New repos** inherit it for free: `project-starter/` ships a `ci.yml` with
+  the block and a `workflow-permissions` job that runs the check.
+- **Existing repos** should adopt it with the shared tooling from
+  `tuna-os/.github`: copy `workflow-templates/ci.yml` (a compliant starting
+  point) and run the check — `python3 scripts/check-workflow-permissions.py
+  .github/workflows`. The script and a ready-to-run workflow ship there and are
+  copied in.
+
 ## Getting help
 
 - Ask in the relevant issue or PR.
-- See `tuna-os/docs` for architecture and build-pipeline reference docs.
+- See the [`tuna-os/docs` repository](https://github.com/tuna-os/docs) for architecture and build-pipeline reference documentation. Start with its `README.md` for an overview of the image factory and repository organization.
 - For security issues, use the private channel described in `SECURITY.md` —
   never paste secrets or exploit details into a public issue.
