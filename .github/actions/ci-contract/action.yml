@@ -1,0 +1,56 @@
+name: "CI Contract Verification"
+description: >-
+  Verifies that every green criterion in a green-criteria.yml file is asserted
+  by a reachable workflow job/step. The validator is a standalone, unit-tested
+  CLI (check-ci-contract.py) that lives in this action and travels with it, so
+  the CI-contract rules are tested in one place instead of embedded inline in
+  a workflow step (tuna-os/.github#206).
+
+inputs:
+  criteria-path:
+    description: Path to the green-criteria.yml file to verify.
+    required: false
+    default: .github/green-criteria.yml
+  workflows-dir:
+    description: Directory containing the workflow YAML files.
+    required: false
+    default: .github/workflows
+  python-version:
+    description: Python version to run the validator on.
+    required: false
+    default: "3.11"
+  run-tests:
+    description: >-
+      Run the validator's own unit tests before the check. About half of them
+      assert what must NOT be reported, because a contract checker that flags a
+      valid gate gets switched off and then nothing is checked at all.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Validator unit tests
+      if: inputs.run-tests == 'true'
+      shell: bash
+      run: python3 "$GITHUB_ACTION_PATH/check-ci-contract.test.py"
+
+    - name: Install dependencies
+      shell: bash
+      run: python3 -m pip install pyyaml
+
+    - name: Verify CI contract
+      shell: bash
+      # Inputs travel through env, never through ${{ }} interpolation into the
+      # script body: Actions substitutes expressions into the script text before
+      # bash parses it, so a caller-supplied path would be parsed as shell. As
+      # an env var the value is data and is passed to the script verbatim.
+      env:
+        CRITERIA_PATH: ${{ inputs.criteria-path }}
+        WORKFLOWS_DIR: ${{ inputs.workflows-dir }}
+      run: python3 "$GITHUB_ACTION_PATH/check-ci-contract.py"

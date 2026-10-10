@@ -1,0 +1,44 @@
+name: CI Contract (self-check)
+
+# Runs the ci-contract validator's own unit tests (and the contract check
+# itself) in this repo's CI, on every push and pull request to main. This repo
+# has no .github/green-criteria.yml yet, so the check is a no-op skip here -- but
+# the unit tests still run, which is the point: the validator the reusable
+# ci-contract workflow depends on is exercised on every change to it, not only
+# when some caller happens to adopt it (tuna-os/.github#206).
+#
+# Mirrors workflow-permissions-check.yml: run the check + its self-test directly
+# in this repo rather than via the composite action, so the self-check works on
+# the branch before the action exists on main.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/actions/ci-contract/**"
+      - ".github/workflows/reusable-ci-contract.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/actions/ci-contract/**"
+      - ".github/workflows/reusable-ci-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-check:
+    name: CI Contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python3 -m pip install pyyaml
+      - name: Validator unit tests
+        run: python3 .github/actions/ci-contract/check-ci-contract.test.py
+      - name: Verify CI contract
+        run: python3 .github/actions/ci-contract/check-ci-contract.py
