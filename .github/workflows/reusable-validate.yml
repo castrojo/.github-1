@@ -1,0 +1,117 @@
+name: Validate (reusable)
+
+# Unified lint/validation orchestrator for tuna-os org repositories.
+#
+# Before this, linting and validation were scattered across independent
+# workflows with no orchestration and no single entry point:
+#
+#   * reusable-lint.yml        generic static analysis (shellcheck, yamllint,
+#                              json, actionlint, justfmt)        -- workflow_call
+#   * ste-lint.yml             Simplified Technical English prose check  -- workflow_call
+#
+# The issue that spawned this also named a third validator, "workflow
+# permissions". That was never a reusable workflow -- it was a one-time
+# enforcement (tuna-os/.github#155) applied directly to the workflows -- so it
+# is not dispatchable today. The orchestrator below is structured so a future
+# `reusable-workflow-permissions.yml` can be added by simply listing
+# "workflow-permissions" in the `validators` input; no other line changes.
+#
+# This workflow is the single thing a caller adds to its CI. It:
+#
+#   1. Dispatches to the specialized validators named in `validators` as
+#      ordered phases (each phase `needs:` the previous one, so they run in
+#      sequence rather than as three unrelated check runs).
+#   2. Runs every enabled phase even if an earlier one fails (if: always()),
+#      so the report always covers every validator the repo opted into.
+#   3. Aggregates into a single pass/fail verdict: the workflow is red if any
+#      validator fails, and the `report` job prints one consolidated summary.
+#   4. Lets each repo enable only the validators it wants via the `validators`
+#      input (a JSON array of ids) -- no more remembering to call each one.
+#
+# Caller usage -- keep your own `on:` trigger, become a thin job that uses this:
+#
+#   jobs:
+#     validate:
+#       uses: tuna-os/.github/.github/workflows/reusable-validate.yml@main
+#
+# Org-level reusable workflow adopting Hive practice #14 (epic #2250, issue #2260).
+
+on:
+  workflow_call:
+    inputs:
+      validators:
+        description: >-
+          JSON array of validator ids to run. Supported ids today are "lint"
+          and "ste-lint". Add more as reusable validators land; the orchestrator
+          needs no other change.
+        required: false
+        type: string
+        default: '["lint", "ste-lint"]'
+
+# The report job only prints, and every phase declares its own permissions, but
+# a top-level block is kept for parity with the other reusable workflows and so
+# the report job never runs with an implicit empty permission set.
+permissions:
+  contents: read
+
+jobs:
+  # --- dispatch phases: one job per enabled validator, in order ------------
+  #
+  # The first phase has no `needs:`. Every later phase `needs:` the one before
+  # it and carries `if: always() && contains(...)`, which keeps the ordering
+  # while overriding the default "skip when a needed job failed" behaviour, so
+  # a failure in an earlier phase never hides a later one from the report.
+
+  lint:
+    if: contains(fromJSON(inputs.validators), "lint")
+    uses: tuna-os/.github/.github/workflows/reusable-lint.yml@main
+
+  ste-lint:
+    if: always() && contains(fromJSON(inputs.validators), "ste-lint")
+    needs: [lint]
+    uses: tuna-os/.github/.github/workflows/ste-lint.yml@main
+
+  # --- aggregation ---------------------------------------------------------
+  #
+  # A single job that always runs and turns the per-validator job results into
+  # one readable summary. The workflow's own pass/fail is the verdict (red if
+  # any validator failed); this job makes that verdict visible and consistent.
+
+  report:
+    name: Validation summary
+    if: always()
+    needs: [lint, ste-lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Print validation summary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # GitHub substitutes these before bash sees them, so each variable is
+          # one of: success | failure | skipped | cancelled.
+          lint_result="${{ jobs.lint.result }}"
+          ste_result="${{ jobs.ste-lint.result }}"
+
+          describe() {
+            case "$1" in
+              success)    echo "PASS";;
+              failure)    echo "FAIL";;
+              skipped)    echo "skipped (not enabled)";;
+              cancelled)  echo "cancelled";;
+              *)          echo "$1";;
+            esac
+          }
+
+          echo "## Validation summary"
+          echo
+          echo "- generic lint (shellcheck, yamllint, json, actionlint, justfmt): $(describe "$lint_result")"
+          echo "- Simplified Technical English: $(describe "$ste_result")"
+          echo
+          if [ "$lint_result" = failure ] || [ "$ste_result" = failure ]; then
+            echo "Overall: **FAILED** -- one or more validators reported findings."
+          else
+            echo "Overall: **PASSED** -- no validator reported findings."
+          fi
