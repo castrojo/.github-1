@@ -73,6 +73,41 @@ baseline called for by
   .github/workflows`. The script and a ready-to-run workflow ship there and are
   copied in.
 
+### Pinning GitHub Actions
+
+Every `uses:` of a **third-party or marketplace** action — `actions/checkout`,
+`actions/setup-*`, `actions/upload-artifact`, `flatpak/flatpak-github-actions/
+flatpak-builder`, and similar — must pin to a **full 40-character commit SHA**.
+A mutable version tag (`@v7`, `@v6.8`) or branch ref gives no cryptographic
+guarantee: a tag can be re-pointed or force-pushed, so `@v7` today is not the
+code `@v7` ran yesterday, and a compromised upstream release then flows silently
+into every workflow that consumes this shared repo.
+
+```yaml
+- uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+```
+
+Resolve the current SHA for a tag with the refs API
+(`gh api repos/<owner>/<repo>/refs/tags/<tag> --jq '.object.sha'`) or
+`git ls-remote --tags`, keep the ` # <tag>` comment so the pinned tag stays
+traceable for the next bump, and let Renovate's digest updates carry the SHA
+forward.
+
+**Internal composite actions and reusable workflows** (references to
+`tuna-os/.github/.github/actions/*` or `.../workflows/*`) use `@main` by design.
+They ship with the calling workflow and are versioned by this repo's own history,
+not by independent releases, so pinning them to a SHA would force a coordinated
+bump across every consumer on each shared-action change. The shared flatpak
+tooling is guarded instead by the
+[Flatpak Tooling Drift Check](.github/workflows/flatpak-tooling-drift-check.yml).
+
+This is a required review item and is backed by an automated workflow-action
+pinning check in CI (#255). It closes the root cause behind sec-check finding
+[tuna-os/.github#175](https://github.com/tuna-os/.github/issues/175) — "no
+enforced standard or CI check requiring commit SHA pinning" — while the per-repo
+action pinning it tracks is filed separately as
+[tuna-os/.github#174](https://github.com/tuna-os/.github/issues/174).
+
 ## Getting help
 
 - Ask in the relevant issue or PR.
