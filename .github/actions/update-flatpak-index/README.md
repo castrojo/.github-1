@@ -37,14 +37,29 @@ indirectly through the reusable
 (recommendation #2). Direct callers of *this* action are what remains
 duplicated, not `update-index.py` itself.
 
-Confirmed migrated off the local `.github/scripts/update-index.py` copy
-(verified by cloning each repo's default branch — no file at that path in
-any of them): `Tavern`, `dualcut`, `mandelbrot`, `gtk-office-suite`. Not
-verified either way from this repo (no visibility into their default
-branch from here): `tuna-installer-{cosmic,kde,niri,xfce}`,
-`bootc-installer` — tunaos#1183's original list named them too, and nothing
-in this repo confirms whether they've moved off the script or the
-clone/push block `publish-flatpak-index`'s README describes.
+Confirmed migrated off the local `update-index.py` copy, verified 2026-10-10
+against each repo's default branch via the GitHub contents API (no copy at
+either `.github/scripts/update-index.py` or `scripts/update-index.py`):
+
+- `Tavern` ✅ · `dualcut` ✅ · `mandelbrot` ✅ · `gtk-office-suite` ✅ ·
+  `bootc-installer` ✅ (default branch `dev`)
+
+The four installer repos in tunaos#1183's list no longer live in `tuna-os` —
+the API returns 404 for `tuna-installer-{cosmic,kde,niri,xfce}`. They moved
+to the `hanthor` org (or disappeared):
+
+- `tuna-installer-kde` → `hanthor/tuna-installer-kde` ✅ migrated (no copy)
+- `tuna-installer-cosmic` → `hanthor/tuna-installer-cosmic` ❌ still carries
+  `.github/scripts/update-index.py`
+- `tuna-installer-xfce` → `hanthor/tuna-installer-xfce` ❌ still carries
+  `.github/scripts/update-index.py`
+- `tuna-installer-niri` → no longer exists (404 in `tuna-os` and `hanthor`)
+
+Two more callers in the drift set still carry a copy and have not migrated:
+`tuna-os/blueshell` (`.github/scripts/update-index.py`, default branch
+`ptyxis-port`) and `tuna-os/docs` (`.github/scripts/update-index.py`).
+`tuna-os/flatpak-index` is the canonical source these migrate to, not a
+caller — its `scripts/update-index.py` is expected to exist.
 
 Recommendation #3 from tunaos#1183 (an interim drift-guard that fails when a
 repo's committed copy diverges from canonical) is implemented in
